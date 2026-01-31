@@ -1,4 +1,4 @@
-# Scripts de Instalação - CRM AI9
+# Scripts de Instalação - CRM
 
 Scripts automatizados para instalação do CRM completo (Backend + Frontend + API Oficial) em servidores Ubuntu.
 
@@ -30,30 +30,38 @@ sudo chmod +x instalador_single.sh
 sudo ./instalador_single.sh
 ```
 
-## ✨ Novidades v2.0
+## ✨ Novidades v3.0
 
-### 🎯 Repositório Padrão
+### 🔐 Deploy Keys SSH (Maior Segurança)
 
-Agora você pode usar o repositório **ai9tec/crm** (público) com apenas um clique!
+Substituição de Personal Access Tokens por **Deploy Keys SSH específicas** de repositório:
 
-Quando perguntado:
-```
->> Usar repositório padrão (https://github.com/ai9tec/crm.git)? (S/N):
-```
-- Digite **S** → Usa repositório ai9tec/crm (não precisa token)
-- Digite **N** → Informa outro repositório manualmente
+**Vantagens:**
+- ✅ Deploy Key tem acesso **apenas ao repositório específico**
+- ✅ Não expõe credenciais em variáveis de ambiente
+- ✅ Cada servidor tem sua própria chave SSH única
+- ✅ Fácil revogação sem afetar outros repositórios
+- ✅ GitHub registra qual Deploy Key foi usada (auditoria)
 
-### 🔓 Suporte a Repositórios Públicos
+### 🔓 Suporte a Repositórios Públicos e Privados
 
-Não precisa mais de token para repositórios públicos:
-- **Repositório público** → Token opcional (deixe vazio)
-- **Repositório privado** → Token obrigatório
+**Repositórios Públicos (HTTPS):**
+- Autenticação via HTTPS
+- Não requer configuração adicional
+- Ideal para projetos open source
 
-### 🔐 Segurança Melhorada
+**Repositórios Privados (SSH):**
+- Deploy Keys geradas automaticamente
+- Chave RSA 4096 bits
+- Instruções interativas para adicionar no GitHub
+- Maior segurança e controle de acesso
 
-Token GitHub nunca é exibido completo na tela:
-- Mostra apenas: `ghp_****************`
-- Ou: `(não fornecido - repositório público)`
+### 🎯 Script Totalmente Independente
+
+O instalador não está vinculado a nenhum repositório específico, permitindo:
+- ✅ Usar qualquer repositório GitHub (público ou privado)
+- ✅ Flexibilidade total para diferentes projetos
+- ✅ Reutilização do script em diversos cenários
 
 ## 📦 Componentes Instalados
 
@@ -83,10 +91,10 @@ O script instala automaticamente:
   - `api.seudominio.com.br` → Backend
   - `app.seudominio.com.br` → Frontend
 
-### GitHub (Opcional)
-- Token pessoal apenas para repositórios privados
-- Criar em: https://github.com/settings/tokens
-- Permissões necessárias: `repo` (acesso completo)
+### GitHub
+- **Repositórios Públicos:** Não requer autenticação
+- **Repositórios Privados:** Deploy Key SSH (gerada automaticamente pelo script)
+- Deploy Keys devem ser adicionadas em: Settings > Deploy keys > Add deploy key
 
 ## 🛠️ Scripts Disponíveis
 
@@ -133,12 +141,30 @@ sudo ./instalador_apioficial.sh
 
 O instalador solicitará:
 
-### 1. Repositório
+### 1. Tipo de Autenticação do Repositório
 ```
->> Usar repositório padrão (ai9tec/crm)? (S/N):
+>> Escolha o tipo de autenticação do repositório:
+>> 1 - Repositório Público (HTTPS sem autenticação)
+>> 2 - Repositório Privado (SSH com Deploy Key)
 ```
-- **S** = Usa https://github.com/ai9tec/crm.git
-- **N** = Permite informar outro repositório
+
+**Opção 1 - Repositório Público:**
+```
+>> Digite a URL HTTPS do repositório no GitHub:
+> https://github.com/usuario/repositorio.git
+```
+
+**Opção 2 - Repositório Privado:**
+```
+>> Digite a URL SSH do repositório no GitHub:
+> git@github.com:usuario/repositorio.git
+
+>> Configuração da Deploy Key SSH
+[Script gera chave SSH RSA 4096 bits]
+[Exibe chave pública para copiar]
+>> Adicione a chave como Deploy Key no GitHub:
+   Settings > Deploy keys > Add deploy key
+```
 
 ### 2. URLs dos Subdomínios
 ```
@@ -233,10 +259,16 @@ PGPASSWORD=sua_senha pg_dump -U empresa -h localhost oficialseparado > backup_ap
 ```
 >> ERRO: Falha ao clonar repositório!
 ```
-**Solução:**
-- Verificar URL correta
-- Para repos privados: verificar token válido
+**Solução para Repositório Público (HTTPS):**
+- Verificar se a URL HTTPS está correta
+- Confirmar que o repositório é realmente público
 - Testar conexão: `ping github.com`
+
+**Solução para Repositório Privado (SSH):**
+- Verificar se a Deploy Key foi adicionada corretamente no GitHub
+- Confirmar que a URL SSH está correta (git@github.com:usuario/repo.git)
+- Verificar permissões da chave SSH: `ls -la /home/deploy/.ssh/`
+- Testar conexão SSH: `ssh -T git@github.com`
 
 ### DNS não resolve
 ```
@@ -272,18 +304,14 @@ pm2 save --force
 sudo ./instalador_single.sh
 ```
 
-## 📚 Documentação Adicional
-
-- **[CHANGELOG.md](CHANGELOG.md)** - Histórico de mudanças
-- **[Repositório CRM](https://github.com/ai9tec/crm)** - Código-fonte
-- **[README do CRM](https://github.com/ai9tec/crm/blob/main/README.md)** - Documentação completa
-
 ## 🔒 Segurança
 
-### Token GitHub
-- Nunca compartilhe seu token
-- Use tokens com escopo mínimo necessário
-- Revogue tokens não utilizados
+### Deploy Keys SSH
+- Cada servidor deve ter sua própria chave SSH única
+- Nunca compartilhe chaves privadas SSH
+- Deploy Keys podem ser revogadas a qualquer momento no GitHub
+- Chave privada tem permissões 600 (somente proprietário lê/escreve)
+- Para revogar: GitHub > Settings > Deploy keys > Delete
 
 ### Senhas
 - Use senhas fortes (mínimo 12 caracteres)
@@ -294,6 +322,63 @@ sudo ./instalador_single.sh
 - Certificados são renovados automaticamente
 - Certbot configurado com cron job
 - Validade: 90 dias (renovação automática aos 60)
+
+## 💡 Exemplos de Uso
+
+### Exemplo 1: Instalação com Repositório Público
+
+```bash
+sudo ./instalador_single.sh
+
+# Quando solicitado:
+>> Escolha o tipo de autenticação: 1
+>> Digite a URL HTTPS: https://github.com/ai9tec/crm.git
+
+# Continue com as demais configurações...
+```
+
+### Exemplo 2: Instalação com Repositório Privado
+
+```bash
+sudo ./instalador_single.sh
+
+# Quando solicitado:
+>> Escolha o tipo de autenticação: 2
+>> Digite a URL SSH: git@github.com:meuusuario/meu-crm-privado.git
+
+# Script gera a chave SSH e exibe:
+[Chave pública SSH aparece na tela]
+
+# Passos:
+1. Copiar a chave pública exibida
+2. Ir até GitHub > Repositório > Settings > Deploy keys
+3. Clicar em "Add deploy key"
+4. Colar a chave e dar um nome (ex: "Servidor Produção")
+5. Marcar "Allow write access" se necessário
+6. Pressionar Enter no terminal para continuar
+
+# Continue com as demais configurações...
+```
+
+### Exemplo 3: Migração de Instalação Existente
+
+Se você já tem uma instalação usando token e quer migrar para Deploy Key:
+
+```bash
+# 1. Gerar Deploy Key
+sudo su - deploy
+ssh-keygen -t rsa -b 4096 -C "deploy@servidor" -f ~/.ssh/id_rsa -N ""
+cat ~/.ssh/id_rsa.pub
+
+# 2. Adicionar chave no GitHub (copiar output acima)
+
+# 3. Reconfigurar remote do Git
+cd /home/deploy/empresa/
+git remote set-url origin git@github.com:usuario/repositorio.git
+
+# 4. Testar
+git fetch origin
+```
 
 ## 🤝 Suporte
 
@@ -310,6 +395,7 @@ Proprietário - Todos os direitos reservados
 
 ---
 
-**Versão:** 2.0.0  
+**Versão:** 3.0.0  
 **Última atualização:** 31/01/2026  
-**Compatibilidade:** Ubuntu 22.04, 24.04 LTS
+**Compatibilidade:** Ubuntu 22.04, 24.04 LTS  
+**Principais mudanças v3.0:** Deploy Keys SSH substituem tokens, script totalmente independente de repositórios específicos
