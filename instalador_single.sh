@@ -413,6 +413,7 @@ instalacao_base() {
   fi
   if [ "$etapa" -le "13" ]; then
     instala_git_base || trata_erro "instala_git_base"
+    configura_deploy_key_ssh || trata_erro "configura_deploy_key_ssh"
     salvar_etapa 14
   fi
   if [ "$etapa" -le "14" ]; then
@@ -626,55 +627,8 @@ questoes_variaveis_base() {
     echo
     read -p "> " repo_url
     echo
-    
-    # CONFIGURA DEPLOY KEY
-    banner
-    printf "${WHITE} >> Configuração da Deploy Key SSH \n"
-    printf "${YELLOW} >> IMPORTANTE: Você precisará adicionar a chave pública gerada como Deploy Key no repositório GitHub\n"
-    echo
-    printf "${WHITE} >> Pressione Enter para gerar a chave SSH...\n"
-    read -p ""
-    echo
-    
-    # Gera chave SSH para o usuário deploy se não existir
-    if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
-      sudo su - deploy <<'SSHKEYGEN'
-      mkdir -p ~/.ssh
-      chmod 700 ~/.ssh
-      ssh-keygen -t rsa -b 4096 -C "deploy@multiflow" -f ~/.ssh/id_rsa -N ""
-SSHKEYGEN
-      printf "${GREEN} >> Chave SSH gerada com sucesso!\n${WHITE}"
-    else
-      printf "${YELLOW} >> Chave SSH já existe, usando a chave existente...\n${WHITE}"
-    fi
-    
-    echo
-    printf "${GREEN}══════════════════════════════════════════════════════════════════${WHITE}\n"
-    printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
-    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-    sudo cat /home/deploy/.ssh/id_rsa.pub
-    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-    echo
-    printf "${WHITE} >> PASSOS PARA CONFIGURAR NO GITHUB:\n"
-    printf "${WHITE} >> 1. Copie a chave pública acima\n"
-    printf "${WHITE} >> 2. Vá até o repositório no GitHub\n"
-    printf "${WHITE} >> 3. Acesse: Settings > Deploy keys > Add deploy key\n"
-    printf "${WHITE} >> 4. Cole a chave pública\n"
-    printf "${WHITE} >> 5. Marque 'Allow write access' se necessário\n"
-    echo
-    printf "${WHITE} >> Após adicionar a Deploy Key no GitHub, pressione Enter para continuar...\n"
-    read -p ""
-    echo
-    
-    # Configura o SSH para aceitar a chave do GitHub
-    sudo su - deploy <<'SSHCONFIG'
-      mkdir -p ~/.ssh
-      chmod 700 ~/.ssh
-      ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
-      chmod 600 ~/.ssh/known_hosts
-SSHCONFIG
-    
-    printf "${GREEN} >> Deploy Key configurada!${WHITE}\n"
+    printf "${GREEN} >> Usando repositório privado via SSH...${WHITE}\n"
+    printf "${YELLOW} >> NOTA: A chave SSH será gerada durante a instalação.${WHITE}\n"
     sleep 2
   else
     printf "${RED} >> Opção inválida! Retornando ao menu...\n${WHITE}"
@@ -1408,6 +1362,84 @@ instala_git_base() {
 EOF
     sleep 2
   } || trata_erro "instala_git_base"
+}
+
+# Configura Deploy Key SSH para repositório privado
+configura_deploy_key_ssh() {
+  # Só executa se o tipo de autenticação for SSH
+  if [ "${repo_auth_type}" != "ssh" ]; then
+    return 0
+  fi
+  
+  banner
+  printf "${WHITE} >> Configurando Deploy Key SSH para repositório privado...\n"
+  echo
+  {
+    # Verifica se usuário deploy existe
+    if ! id "deploy" &>/dev/null; then
+      printf "${RED} >> ERRO: Usuário deploy não existe!${WHITE}\n"
+      exit 1
+    fi
+    
+    # Gera chave SSH para o usuário deploy se não existir
+    if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
+      banner
+      printf "${WHITE} >> Gerando chave SSH RSA 4096 bits...\n"
+      echo
+      sudo su - deploy <<'SSHKEYGEN'
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        ssh-keygen -t rsa -b 4096 -C "deploy@multiflow" -f ~/.ssh/id_rsa -N ""
+SSHKEYGEN
+      
+      if [ $? -eq 0 ]; then
+        printf "${GREEN} >> Chave SSH gerada com sucesso!\n${WHITE}"
+      else
+        printf "${RED} >> ERRO ao gerar chave SSH!${WHITE}\n"
+        exit 1
+      fi
+    else
+      printf "${YELLOW} >> Chave SSH já existe, usando a chave existente...\n${WHITE}"
+    fi
+    
+    echo
+    banner
+    printf "${GREEN}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
+    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    echo
+    sudo cat /home/deploy/.ssh/id_rsa.pub
+    echo
+    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    echo
+    printf "${WHITE} >> PASSOS PARA CONFIGURAR NO GITHUB:\n"
+    printf "${WHITE} >> 1. Copie a chave pública acima\n"
+    printf "${WHITE} >> 2. Vá até o repositório no GitHub: ${BLUE}${repo_url}${WHITE}\n"
+    printf "${WHITE} >> 3. Acesse: ${YELLOW}Settings > Deploy keys > Add deploy key${WHITE}\n"
+    printf "${WHITE} >> 4. Cole a chave pública no campo 'Key'\n"
+    printf "${WHITE} >> 5. Dê um título (ex: 'Servidor Produção')\n"
+    printf "${WHITE} >> 6. Marque '${GREEN}Allow write access${WHITE}' se necessário\n"
+    printf "${WHITE} >> 7. Clique em '${GREEN}Add key${WHITE}'\n"
+    echo
+    printf "${YELLOW} >> Após adicionar a Deploy Key no GitHub, pressione Enter para continuar...${WHITE}\n"
+    read -p ""
+    echo
+    
+    # Configura o SSH para aceitar a chave do GitHub
+    printf "${WHITE} >> Configurando known_hosts para GitHub...\n"
+    sudo su - deploy <<'SSHCONFIG'
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+      chmod 600 ~/.ssh/known_hosts
+      chmod 600 ~/.ssh/id_rsa
+      chmod 644 ~/.ssh/id_rsa.pub
+SSHCONFIG
+    
+    echo
+    printf "${GREEN} >> Deploy Key SSH configurada com sucesso!${WHITE}\n"
+    sleep 2
+  } || trata_erro "configura_deploy_key_ssh"
 }
 
 # Função para codificar URL de clone
