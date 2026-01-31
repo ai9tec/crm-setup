@@ -1908,10 +1908,29 @@ EOF
   
   cd "\$FRONTEND_DIR"
   
-  # Verifica se server.js existe
+  # Criar server.js se não existir
   if [ ! -f "server.js" ]; then
-    echo "ERRO: Arquivo server.js não encontrado em \$FRONTEND_DIR"
-    exit 1
+    echo "Criando arquivo server.js para servir o frontend..."
+    cat > server.js << 'SERVERJS'
+const express = require('express');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Servir arquivos estáticos do build
+app.use(express.static(path.join(__dirname, 'build')));
+
+// Qualquer rota não encontrada retorna o index.html (para React Router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(\`Frontend rodando na porta \${PORT}\`);
+});
+SERVERJS
+    echo "Arquivo server.js criado com sucesso!"
   fi
   
   # Copiar arquivos necessários para o build
@@ -1952,12 +1971,6 @@ FRONTENDBUILD
   fi
   
   cd "\$FRONTEND_DIR"
-  
-  # Verifica se server.js existe
-  if [ ! -f "server.js" ]; then
-    echo "ERRO: Arquivo server.js não encontrado em \$FRONTEND_DIR"
-    exit 1
-  fi
   
   pm2 start server.js --name ${empresa}-frontend
   pm2 save
@@ -2358,9 +2371,31 @@ STOPPM2
   npm prune --force > /dev/null 2>&1
   npm install --force
   
-  if [ -f "server.js" ]; then
-    sed -i 's/3000/'"$frontend_port"'/g' server.js
+  # Criar server.js se não existir
+  if [ ! -f "server.js" ]; then
+    echo "Criando arquivo server.js para servir o frontend..."
+    cat > server.js << 'SERVERJS'
+const express = require('express');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Servir arquivos estáticos do build
+app.use(express.static(path.join(__dirname, 'build')));
+
+// Qualquer rota não encontrada retorna o index.html (para React Router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(\`Frontend rodando na porta \${PORT}\`);
+});
+SERVERJS
   fi
+  
+  sed -i 's/3000/'"$frontend_port"'/g' server.js
   
   NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
   sleep 2
