@@ -1914,6 +1914,21 @@ EOF
     exit 1
   fi
   
+  # Criar pasta assets e copiar arquivos necessários para o build
+  mkdir -p "\$FRONTEND_DIR/src/assets"
+  if [ -f "\$FRONTEND_DIR/public/logo.png" ]; then
+    cp "\$FRONTEND_DIR/public/logo.png" "\$FRONTEND_DIR/src/assets/logo.png"
+    echo "Logo principal copiado para src/assets/"
+  fi
+  if [ -f "\$FRONTEND_DIR/public/logo-black.png" ]; then
+    cp "\$FRONTEND_DIR/public/logo-black.png" "\$FRONTEND_DIR/src/assets/logo-black.png"
+    echo "Logo black copiado para src/assets/"
+  fi
+  if [ -f "\$FRONTEND_DIR/public/favicon.ico" ]; then
+    cp "\$FRONTEND_DIR/public/favicon.ico" "\$FRONTEND_DIR/src/assets/favicon.ico"
+    echo "Favicon copiado para src/assets/"
+  fi
+  
   sed -i 's/3000/'"${frontend_port}"'/g' server.js
   NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
 FRONTENDBUILD
