@@ -58,8 +58,8 @@ salvar_variaveis() {
   echo "numero_suporte=${numero_suporte}" >>$ARQUIVO_VARIAVEIS
   echo "facebook_app_id=${facebook_app_id}" >>$ARQUIVO_VARIAVEIS
   echo "facebook_app_secret=${facebook_app_secret}" >>$ARQUIVO_VARIAVEIS
-  echo "github_token=${github_token}" >>$ARQUIVO_VARIAVEIS
   echo "repo_url=${repo_url}" >>$ARQUIVO_VARIAVEIS
+  echo "repo_auth_type=${repo_auth_type}" >>$ARQUIVO_VARIAVEIS
   echo "proxy=${proxy}" >>$ARQUIVO_VARIAVEIS
   echo "backend_port=${backend_port}" >>$ARQUIVO_VARIAVEIS
   echo "frontend_port=${frontend_port}" >>$ARQUIVO_VARIAVEIS
@@ -142,7 +142,10 @@ verificar_arquivos_existentes() {
   fi
 }
 
-# Função para instalar API What
+# Função para instalar API WhatsMeow
+# NOTA: Esta função está DESABILITADA no menu (opção 3 comentada)
+# Motivo: Depende do repositório privado scriptswhitelabel/m.git
+# Para reativar: Descomentar opção 3 no menu_ferramentas() E adaptar REPO_URL na linha 187
 instalar_whatsmeow() {
   banner
   printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
@@ -246,7 +249,7 @@ menu_ferramentas() {
     echo
     printf "   [${BLUE}1${WHITE}] Instalador RabbitMQ\n"
     printf "   [${BLUE}2${WHITE}] Instalar Push Notifications\n"
-    printf "   [${BLUE}3${WHITE}] Instalar API WhatsMeow\n"
+    # printf "   [${BLUE}3${WHITE}] Instalar API WhatsMeow\n"   # Desabilitado - Requer repositório privado
     printf "   [${BLUE}0${WHITE}] Voltar ao Menu Principal\n"
     echo
     read -p "> " option_tools
@@ -281,9 +284,9 @@ menu_ferramentas() {
         sleep 3
       fi
       ;;
-    3)
-      instalar_whatsmeow
-      ;;
+    # 3)  # WhatsMeow desabilitado - requer repositório privado scriptswhitelabel/m.git
+    #   instalar_whatsmeow
+    #   ;;
     0)
       return
       ;;
@@ -594,19 +597,107 @@ questoes_variaveis_base() {
   echo
   read -p "> " facebook_app_secret
   echo
-  # DEFINE TOKEN GITHUB
+  # OPÇÃO DE USAR REPOSITÓRIO PADRÃO
   banner
-  printf "${WHITE} >> Digite seu TOKEN de acesso pessoal do GitHub: \n"
-  printf "${WHITE} >> Passo a Passo para gerar o seu TOKEN no link ${BLUE}https://bit.ly/token-github ${WHITE} \n"
+  printf "${WHITE} >> Usar repositório padrão (https://github.com/ai9tec/crm.git)? (S/N): \n"
+  printf "${WHITE} >> (Repositório público - não requer autenticação) \n"
   echo
-  read -p "> " github_token
+  read -p "> " usar_padrao
+  usar_padrao=$(echo "${usar_padrao}" | tr '[:lower:]' '[:upper:]')
   echo
-  # DEFINE LINK REPO GITHUB
-  banner
-  printf "${WHITE} >> Digite a URL do repositório privado no GitHub: \n"
-  echo
-  read -p "> " repo_url
-  echo
+
+  if [ "${usar_padrao}" == "S" ]; then
+    repo_url="https://github.com/ai9tec/crm.git"
+    repo_auth_type="public"
+    printf "${GREEN} >> Usando repositório padrão ai9tec/crm (público)...${WHITE}\n"
+    sleep 2
+  else
+    # DEFINE TIPO DE AUTENTICAÇÃO
+    banner
+    printf "${WHITE} >> Escolha o tipo de autenticação: \n"
+    printf "${WHITE} >> 1 - Repositório Público (HTTPS sem autenticação) \n"
+    printf "${WHITE} >> 2 - Repositório Privado (SSH com Deploy Key) \n"
+    echo
+    read -p "> " auth_choice
+    echo
+    
+    if [ "${auth_choice}" == "1" ]; then
+      repo_auth_type="public"
+      # DEFINE LINK REPO GITHUB
+      banner
+      printf "${WHITE} >> Digite a URL HTTPS do repositório no GitHub: \n"
+      printf "${WHITE} >> (ex: https://github.com/usuario/repo.git) \n"
+      echo
+      read -p "> " repo_url
+      echo
+      printf "${GREEN} >> Usando repositório público via HTTPS...${WHITE}\n"
+      sleep 2
+    elif [ "${auth_choice}" == "2" ]; then
+      repo_auth_type="ssh"
+      # DEFINE LINK REPO GITHUB (SSH)
+      banner
+      printf "${WHITE} >> Digite a URL SSH do repositório no GitHub: \n"
+      printf "${WHITE} >> (ex: git@github.com:usuario/repo.git) \n"
+      echo
+      read -p "> " repo_url
+      echo
+      
+      # CONFIGURA DEPLOY KEY
+      banner
+      printf "${WHITE} >> Configuração da Deploy Key SSH \n"
+      printf "${YELLOW} >> IMPORTANTE: Você precisará adicionar a chave pública gerada como Deploy Key no repositório GitHub\n"
+      echo
+      printf "${WHITE} >> Pressione Enter para gerar a chave SSH...\n"
+      read -p ""
+      echo
+      
+      # Gera chave SSH para o usuário deploy se não existir
+      if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
+        sudo su - deploy <<'SSHKEYGEN'
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        ssh-keygen -t rsa -b 4096 -C "deploy@multiflow" -f ~/.ssh/id_rsa -N ""
+SSHKEYGEN
+        printf "${GREEN} >> Chave SSH gerada com sucesso!\n${WHITE}"
+      else
+        printf "${YELLOW} >> Chave SSH já existe, usando a chave existente...\n${WHITE}"
+      fi
+      
+      echo
+      printf "${GREEN}══════════════════════════════════════════════════════════════════${WHITE}\n"
+      printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
+      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+      sudo cat /home/deploy/.ssh/id_rsa.pub
+      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+      echo
+      printf "${WHITE} >> PASSOS PARA CONFIGURAR NO GITHUB:\n"
+      printf "${WHITE} >> 1. Copie a chave pública acima\n"
+      printf "${WHITE} >> 2. Vá até o repositório no GitHub\n"
+      printf "${WHITE} >> 3. Acesse: Settings > Deploy keys > Add deploy key\n"
+      printf "${WHITE} >> 4. Cole a chave pública\n"
+      printf "${WHITE} >> 5. Marque 'Allow write access' se necessário\n"
+      echo
+      printf "${WHITE} >> Após adicionar a Deploy Key no GitHub, pressione Enter para continuar...\n"
+      read -p ""
+      echo
+      
+      # Configura o SSH para aceitar a chave do GitHub
+      sudo su - deploy <<'SSHCONFIG'
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+        chmod 600 ~/.ssh/known_hosts
+SSHCONFIG
+      
+      printf "${GREEN} >> Deploy Key configurada!${WHITE}\n"
+      sleep 2
+    else
+      printf "${RED} >> Opção inválida! Retornando ao menu...\n${WHITE}"
+      sleep 2
+      menu
+      return
+    fi
+  fi
 }
 
 # Define proxy usado
@@ -678,9 +769,18 @@ define_portas_base() {
 
 # Informa os dados de instalação
 dados_instalacao_base() {
+  # Define tipo de autenticação para exibição
+  if [ "${repo_auth_type}" == "ssh" ]; then
+    auth_display="SSH (Deploy Key)"
+  elif [ "${repo_auth_type}" == "public" ]; then
+    auth_display="HTTPS Público (sem autenticação)"
+  else
+    auth_display="HTTPS Público"
+  fi
+  
   printf "   ${WHITE}Anote os dados abaixo\n\n"
   printf "   ${WHITE}Subdominio Backend: ---->> ${YELLOW}${subdominio_backend}\n"
-  printf "   ${WHITE}Subdominiio Frontend: -->> ${YELLOW}${subdominio_frontend}\n"
+  printf "   ${WHITE}Subdominio Frontend: --->> ${YELLOW}${subdominio_frontend}\n"
   printf "   ${WHITE}Seu Email: ------------->> ${YELLOW}${email_deploy}\n"
   printf "   ${WHITE}Nome da Empresa: ------->> ${YELLOW}${empresa}\n"
   printf "   ${WHITE}Senha Deploy: ---------->> ${YELLOW}${senha_deploy}\n"
@@ -690,7 +790,7 @@ dados_instalacao_base() {
   printf "   ${WHITE}Numero de Suporte: ----->> ${YELLOW}${numero_suporte}\n"
   printf "   ${WHITE}FACEBOOK_APP_ID: ------->> ${YELLOW}${facebook_app_id}\n"
   printf "   ${WHITE}FACEBOOK_APP_SECRET: --->> ${YELLOW}${facebook_app_secret}\n"
-  printf "   ${WHITE}Token GitHub: ---------->> ${YELLOW}${github_token}\n"
+  printf "   ${WHITE}Tipo de Autenticação: -->> ${YELLOW}${auth_display}\n"
   printf "   ${WHITE}URL do Repositório: ---->> ${YELLOW}${repo_url}\n"
   printf "   ${WHITE}Proxy Usado: ----------->> ${YELLOW}${proxy}\n"
   printf "   ${WHITE}Porta Backend: --------->> ${YELLOW}${backend_port}\n"
@@ -1338,29 +1438,75 @@ codifica_clone_base() {
   done
 }
 
-# Clona código de repo privado
+# Clona código de repo privado ou público
 baixa_codigo_base() {
   banner
   printf "${WHITE} >> Fazendo download do ${nome_titulo}...\n"
   echo
   {
-    if [ -z "${repo_url}" ] || [ -z "${github_token}" ]; then
-      printf "${WHITE} >> Erro: URL do repositório ou token do GitHub não definidos.\n"
+    if [ -z "${repo_url}" ]; then
+      printf "${RED} >> Erro: URL do repositório não definida.\n"
       exit 1
     fi
 
-    github_token_encoded=$(codifica_clone_base "${github_token}")
-    github_url=$(echo ${repo_url} | sed "s|https://|https://${github_token_encoded}@|")
-
     dest_dir="/home/deploy/${empresa}/"
-
-    git clone ${github_url} ${dest_dir}
+    
+    # Clone baseado no tipo de autenticação
+    if [ "${repo_auth_type}" == "ssh" ]; then
+      # Repositório privado com Deploy Key SSH
+      printf "${WHITE} >> Clonando repositório via SSH (Deploy Key)...\n"
+      echo
+      
+      # Clone como usuário deploy para usar a chave SSH configurada
+      sudo su - deploy <<GITCLONE
+        if [ ! -f ~/.ssh/id_rsa ]; then
+          echo "ERRO: Chave SSH não encontrada. Execute a configuração novamente."
+          exit 1
+        fi
+        
+        # Garante permissões corretas na chave SSH
+        chmod 600 ~/.ssh/id_rsa
+        chmod 644 ~/.ssh/id_rsa.pub
+        
+        # Clone usando SSH
+        GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" git clone ${repo_url} ${dest_dir}
+GITCLONE
+      
+      clone_status=$?
+      
+    else
+      # Repositório público via HTTPS
+      printf "${WHITE} >> Clonando repositório público via HTTPS...\n"
+      echo
+      
+      # Garante que a URL tem o protocolo correto
+      if [[ ! "${repo_url}" =~ ^https?:// ]]; then
+        repo_url="https://${repo_url}"
+      fi
+      
+      # Clone direto como root e depois ajusta permissões
+      git clone ${repo_url} ${dest_dir}
+      clone_status=$?
+    fi
+    
     echo
-    if [ $? -eq 0 ]; then
-      printf "${WHITE} >> Código baixado, continuando a instalação...\n"
+    if [ ${clone_status} -eq 0 ]; then
+      printf "${GREEN} >> Repositório clonado com sucesso!${WHITE}\n"
+      printf "${WHITE} >> Continuando a instalação...\n"
       echo
     else
-      printf "${WHITE} >> Falha ao baixar o código! Verifique as informações fornecidas...\n"
+      printf "${RED} >> ERRO: Falha ao clonar repositório!${WHITE}\n"
+      if [ "${repo_auth_type}" == "ssh" ]; then
+        printf "${RED} >> Verifique:${WHITE}\n"
+        printf "${RED} >> - Deploy Key foi adicionada corretamente no GitHub${WHITE}\n"
+        printf "${RED} >> - URL SSH está correta (git@github.com:usuario/repo.git)${WHITE}\n"
+        printf "${RED} >> - Chave SSH foi gerada corretamente${WHITE}\n"
+      else
+        printf "${RED} >> Verifique:${WHITE}\n"
+        printf "${RED} >> - URL HTTPS está correta${WHITE}\n"
+        printf "${RED} >> - Repositório é realmente público${WHITE}\n"
+        printf "${RED} >> - Conexão com a internet está funcionando${WHITE}\n"
+      fi
       echo
       exit 1
     fi
