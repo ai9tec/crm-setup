@@ -30,39 +30,6 @@ sudo chmod +x instalador_single.sh
 sudo ./instalador_single.sh
 ```
 
-## ✨ Novidades v3.0
-
-### 🔐 Deploy Keys SSH (Maior Segurança)
-
-Substituição de Personal Access Tokens por **Deploy Keys SSH específicas** de repositório:
-
-**Vantagens:**
-- ✅ Deploy Key tem acesso **apenas ao repositório específico**
-- ✅ Não expõe credenciais em variáveis de ambiente
-- ✅ Cada servidor tem sua própria chave SSH única
-- ✅ Fácil revogação sem afetar outros repositórios
-- ✅ GitHub registra qual Deploy Key foi usada (auditoria)
-
-### 🔓 Suporte a Repositórios Públicos e Privados
-
-**Repositórios Públicos (HTTPS):**
-- Autenticação via HTTPS
-- Não requer configuração adicional
-- Ideal para projetos open source
-
-**Repositórios Privados (SSH):**
-- Deploy Keys geradas automaticamente
-- Chave RSA 4096 bits
-- Instruções interativas para adicionar no GitHub
-- Maior segurança e controle de acesso
-
-### 🎯 Script Totalmente Independente
-
-O instalador não está vinculado a nenhum repositório específico, permitindo:
-- ✅ Usar qualquer repositório GitHub (público ou privado)
-- ✅ Flexibilidade total para diferentes projetos
-- ✅ Reutilização do script em diversos cenários
-
 ## 📦 Componentes Instalados
 
 O script instala automaticamente:
