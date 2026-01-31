@@ -597,106 +597,90 @@ questoes_variaveis_base() {
   echo
   read -p "> " facebook_app_secret
   echo
-  # OPÇÃO DE USAR REPOSITÓRIO PADRÃO
+  # DEFINE TIPO DE AUTENTICAÇÃO DO REPOSITÓRIO
   banner
-  printf "${WHITE} >> Usar repositório padrão (https://github.com/ai9tec/crm.git)? (S/N): \n"
-  printf "${WHITE} >> (Repositório público - não requer autenticação) \n"
+  printf "${WHITE} >> Escolha o tipo de autenticação do repositório: \n"
+  printf "${WHITE} >> 1 - Repositório Público (HTTPS sem autenticação) \n"
+  printf "${WHITE} >> 2 - Repositório Privado (SSH com Deploy Key) \n"
   echo
-  read -p "> " usar_padrao
-  usar_padrao=$(echo "${usar_padrao}" | tr '[:lower:]' '[:upper:]')
+  read -p "> " auth_choice
   echo
-
-  if [ "${usar_padrao}" == "S" ]; then
-    repo_url="https://github.com/ai9tec/crm.git"
+  
+  if [ "${auth_choice}" == "1" ]; then
     repo_auth_type="public"
-    printf "${GREEN} >> Usando repositório padrão ai9tec/crm (público)...${WHITE}\n"
-    sleep 2
-  else
-    # DEFINE TIPO DE AUTENTICAÇÃO
+    # DEFINE LINK REPO GITHUB
     banner
-    printf "${WHITE} >> Escolha o tipo de autenticação: \n"
-    printf "${WHITE} >> 1 - Repositório Público (HTTPS sem autenticação) \n"
-    printf "${WHITE} >> 2 - Repositório Privado (SSH com Deploy Key) \n"
+    printf "${WHITE} >> Digite a URL HTTPS do repositório no GitHub: \n"
+    printf "${WHITE} >> (ex: https://github.com/usuario/repo.git) \n"
     echo
-    read -p "> " auth_choice
+    read -p "> " repo_url
+    echo
+    printf "${GREEN} >> Usando repositório público via HTTPS...${WHITE}\n"
+    sleep 2
+  elif [ "${auth_choice}" == "2" ]; then
+    repo_auth_type="ssh"
+    # DEFINE LINK REPO GITHUB (SSH)
+    banner
+    printf "${WHITE} >> Digite a URL SSH do repositório no GitHub: \n"
+    printf "${WHITE} >> (ex: git@github.com:usuario/repo.git) \n"
+    echo
+    read -p "> " repo_url
     echo
     
-    if [ "${auth_choice}" == "1" ]; then
-      repo_auth_type="public"
-      # DEFINE LINK REPO GITHUB
-      banner
-      printf "${WHITE} >> Digite a URL HTTPS do repositório no GitHub: \n"
-      printf "${WHITE} >> (ex: https://github.com/usuario/repo.git) \n"
-      echo
-      read -p "> " repo_url
-      echo
-      printf "${GREEN} >> Usando repositório público via HTTPS...${WHITE}\n"
-      sleep 2
-    elif [ "${auth_choice}" == "2" ]; then
-      repo_auth_type="ssh"
-      # DEFINE LINK REPO GITHUB (SSH)
-      banner
-      printf "${WHITE} >> Digite a URL SSH do repositório no GitHub: \n"
-      printf "${WHITE} >> (ex: git@github.com:usuario/repo.git) \n"
-      echo
-      read -p "> " repo_url
-      echo
-      
-      # CONFIGURA DEPLOY KEY
-      banner
-      printf "${WHITE} >> Configuração da Deploy Key SSH \n"
-      printf "${YELLOW} >> IMPORTANTE: Você precisará adicionar a chave pública gerada como Deploy Key no repositório GitHub\n"
-      echo
-      printf "${WHITE} >> Pressione Enter para gerar a chave SSH...\n"
-      read -p ""
-      echo
-      
-      # Gera chave SSH para o usuário deploy se não existir
-      if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
-        sudo su - deploy <<'SSHKEYGEN'
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-        ssh-keygen -t rsa -b 4096 -C "deploy@multiflow" -f ~/.ssh/id_rsa -N ""
+    # CONFIGURA DEPLOY KEY
+    banner
+    printf "${WHITE} >> Configuração da Deploy Key SSH \n"
+    printf "${YELLOW} >> IMPORTANTE: Você precisará adicionar a chave pública gerada como Deploy Key no repositório GitHub\n"
+    echo
+    printf "${WHITE} >> Pressione Enter para gerar a chave SSH...\n"
+    read -p ""
+    echo
+    
+    # Gera chave SSH para o usuário deploy se não existir
+    if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
+      sudo su - deploy <<'SSHKEYGEN'
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      ssh-keygen -t rsa -b 4096 -C "deploy@multiflow" -f ~/.ssh/id_rsa -N ""
 SSHKEYGEN
-        printf "${GREEN} >> Chave SSH gerada com sucesso!\n${WHITE}"
-      else
-        printf "${YELLOW} >> Chave SSH já existe, usando a chave existente...\n${WHITE}"
-      fi
-      
-      echo
-      printf "${GREEN}══════════════════════════════════════════════════════════════════${WHITE}\n"
-      printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
-      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-      sudo cat /home/deploy/.ssh/id_rsa.pub
-      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-      echo
-      printf "${WHITE} >> PASSOS PARA CONFIGURAR NO GITHUB:\n"
-      printf "${WHITE} >> 1. Copie a chave pública acima\n"
-      printf "${WHITE} >> 2. Vá até o repositório no GitHub\n"
-      printf "${WHITE} >> 3. Acesse: Settings > Deploy keys > Add deploy key\n"
-      printf "${WHITE} >> 4. Cole a chave pública\n"
-      printf "${WHITE} >> 5. Marque 'Allow write access' se necessário\n"
-      echo
-      printf "${WHITE} >> Após adicionar a Deploy Key no GitHub, pressione Enter para continuar...\n"
-      read -p ""
-      echo
-      
-      # Configura o SSH para aceitar a chave do GitHub
-      sudo su - deploy <<'SSHCONFIG'
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
-        chmod 600 ~/.ssh/known_hosts
-SSHCONFIG
-      
-      printf "${GREEN} >> Deploy Key configurada!${WHITE}\n"
-      sleep 2
+      printf "${GREEN} >> Chave SSH gerada com sucesso!\n${WHITE}"
     else
-      printf "${RED} >> Opção inválida! Retornando ao menu...\n${WHITE}"
-      sleep 2
-      menu
-      return
+      printf "${YELLOW} >> Chave SSH já existe, usando a chave existente...\n${WHITE}"
     fi
+    
+    echo
+    printf "${GREEN}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
+    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    sudo cat /home/deploy/.ssh/id_rsa.pub
+    printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+    echo
+    printf "${WHITE} >> PASSOS PARA CONFIGURAR NO GITHUB:\n"
+    printf "${WHITE} >> 1. Copie a chave pública acima\n"
+    printf "${WHITE} >> 2. Vá até o repositório no GitHub\n"
+    printf "${WHITE} >> 3. Acesse: Settings > Deploy keys > Add deploy key\n"
+    printf "${WHITE} >> 4. Cole a chave pública\n"
+    printf "${WHITE} >> 5. Marque 'Allow write access' se necessário\n"
+    echo
+    printf "${WHITE} >> Após adicionar a Deploy Key no GitHub, pressione Enter para continuar...\n"
+    read -p ""
+    echo
+    
+    # Configura o SSH para aceitar a chave do GitHub
+    sudo su - deploy <<'SSHCONFIG'
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+      chmod 600 ~/.ssh/known_hosts
+SSHCONFIG
+    
+    printf "${GREEN} >> Deploy Key configurada!${WHITE}\n"
+    sleep 2
+  else
+    printf "${RED} >> Opção inválida! Retornando ao menu...\n${WHITE}"
+    sleep 2
+    menu
+    return
   fi
 }
 
