@@ -1912,22 +1912,23 @@ EOF
   if [ ! -f "server.js" ]; then
     echo "Criando arquivo server.js para servir o frontend..."
     cat > server.js << 'SERVERJS'
-const express = require('express');
-const path = require('path');
-
+const express = require("express");
+const path = require("path");
 const app = express();
-const PORT = process.env.PORT || 3000;
+const dotenv = require("dotenv");
 
-// Servir arquivos estáticos do build
-app.use(express.static(path.join(__dirname, 'build')));
+// Load environment variables
+dotenv.config();
 
-// Qualquer rota não encontrada retorna o index.html (para React Router)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+app.use(express.static(path.join(__dirname, "build")));
+app.get("/*", function (req, res) {
+    res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(\`Frontend rodando na porta \${PORT}\`);
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+    console.log(\`Server is running on port \${port}\`);
 });
 SERVERJS
     echo "Arquivo server.js criado com sucesso!"
@@ -2375,22 +2376,23 @@ STOPPM2
   if [ ! -f "server.js" ]; then
     echo "Criando arquivo server.js para servir o frontend..."
     cat > server.js << 'SERVERJS'
-const express = require('express');
-const path = require('path');
-
+const express = require("express");
+const path = require("path");
 const app = express();
-const PORT = process.env.PORT || 3000;
+const dotenv = require("dotenv");
 
-// Servir arquivos estáticos do build
-app.use(express.static(path.join(__dirname, 'build')));
+// Load environment variables
+dotenv.config();
 
-// Qualquer rota não encontrada retorna o index.html (para React Router)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+app.use(express.static(path.join(__dirname, "build")));
+app.get("/*", function (req, res) {
+    res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(\`Frontend rodando na porta \${PORT}\`);
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+    console.log(\`Server is running on port \${port}\`);
 });
 SERVERJS
   fi
