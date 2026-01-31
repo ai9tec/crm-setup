@@ -1862,6 +1862,7 @@ instala_frontend_base() {
   fi
   
   npm install --force
+  npm install express dotenv --save
   npx browserslist@latest --update-db
 FRONTENDINSTALL
 
@@ -2371,6 +2372,7 @@ STOPPM2
   
   npm prune --force > /dev/null 2>&1
   npm install --force
+  npm install express dotenv --save
   
   # Criar server.js se não existir
   if [ ! -f "server.js" ]; then
