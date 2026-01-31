@@ -220,25 +220,6 @@ PGPASSWORD=sua_senha pg_dump -U empresa -h localhost empresa > backup.sql
 PGPASSWORD=sua_senha pg_dump -U empresa -h localhost oficialseparado > backup_api.sql
 ```
 
-## 🔒 Segurança
-
-### Deploy Keys SSH
-- Cada servidor deve ter sua própria chave SSH única
-- Nunca compartilhe chaves privadas SSH
-- Deploy Keys podem ser revogadas a qualquer momento no GitHub
-- Chave privada tem permissões 600 (somente proprietário lê/escreve)
-- Para revogar: GitHub > Settings > Deploy keys > Delete
-
-### Senhas
-- Use senhas fortes (mínimo 12 caracteres)
-- Não use caracteres especiais em senha_deploy
-- Altere credenciais padrão após instalação
-
-### SSL/TLS
-- Certificados são renovados automaticamente
-- Certbot configurado com cron job
-- Validade: 90 dias (renovação automática aos 60)
-
 ## 💡 Exemplos de Uso
 
 ### Exemplo 1: Instalação com Repositório Público
