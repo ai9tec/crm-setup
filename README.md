@@ -253,57 +253,6 @@ PGPASSWORD=sua_senha pg_dump -U empresa -h localhost empresa > backup.sql
 PGPASSWORD=sua_senha pg_dump -U empresa -h localhost oficialseparado > backup_api.sql
 ```
 
-## 🔧 Troubleshooting
-
-### Erro ao clonar repositório
-```
->> ERRO: Falha ao clonar repositório!
-```
-**Solução para Repositório Público (HTTPS):**
-- Verificar se a URL HTTPS está correta
-- Confirmar que o repositório é realmente público
-- Testar conexão: `ping github.com`
-
-**Solução para Repositório Privado (SSH):**
-- Verificar se a Deploy Key foi adicionada corretamente no GitHub
-- Confirmar que a URL SSH está correta (git@github.com:usuario/repo.git)
-- Verificar permissões da chave SSH: `ls -la /home/deploy/.ssh/`
-- Testar conexão SSH: `ssh -T git@github.com`
-
-### DNS não resolve
-```
->> ATENÇÃO: Subdomínio não aponta para o IP atual
-```
-**Solução:**
-- Aguardar propagação DNS (até 48h)
-- Pode continuar instalação ignorando aviso
-- Configurar DNS antes de emitir SSL
-
-### Erro de build
-```
->> Erro ao compilar backend/frontend
-```
-**Solução:**
-```bash
-cd /home/deploy/empresa/backend
-rm -rf node_modules package-lock.json
-npm install
-npm run build
-```
-
-### PM2 não inicia
-```bash
-# Verificar logs
-pm2 logs
-
-# Limpar processos
-pm2 delete all
-pm2 save --force
-
-# Reexecutar instalador
-sudo ./instalador_single.sh
-```
-
 ## 🔒 Segurança
 
 ### Deploy Keys SSH
