@@ -296,15 +296,6 @@ git remote set-url origin git@github.com:usuario/repositorio.git
 git fetch origin
 ```
 
-## 🤝 Suporte
-
-### Issues
-https://github.com/ai9tec/crm/issues
-
-### Repositórios
-- **Scripts:** https://github.com/ai9tec/crm-setup
-- **Código:** https://github.com/ai9tec/crm
-
 ## 📄 Licença
 
 Proprietário - Todos os direitos reservados
