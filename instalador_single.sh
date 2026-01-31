@@ -1914,8 +1914,7 @@ EOF
     exit 1
   fi
   
-  # Criar pasta assets e copiar arquivos necessários para o build
-  mkdir -p "\$FRONTEND_DIR/src/assets"
+  # Copiar arquivos necessários para o build
   if [ -f "\$FRONTEND_DIR/public/logo.png" ]; then
     cp "\$FRONTEND_DIR/public/logo.png" "\$FRONTEND_DIR/src/assets/logo.png"
     echo "Logo principal copiado para src/assets/"
