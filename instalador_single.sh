@@ -65,7 +65,9 @@ salvar_variaveis() {
   echo "backend_port=${backend_port}" >>$ARQUIVO_VARIAVEIS
   echo "frontend_port=${frontend_port}" >>$ARQUIVO_VARIAVEIS
   echo "instalar_api_oficial=${instalar_api_oficial}" >>$ARQUIVO_VARIAVEIS
-  echo "subdominio_oficial=${subdominio_oficial}" >>$ARQUIVO_VARIAVEIS
+  if [ "${instalar_api_oficial}" == "s" ] && [ -n "${subdominio_oficial}" ]; then
+    echo "subdominio_oficial=${subdominio_oficial}" >>$ARQUIVO_VARIAVEIS
+  fi
 }
 
 # Carregar variáveis
@@ -686,6 +688,7 @@ questoes_variaveis_base() {
     sleep 2
   else
     instalar_api_oficial="n"
+    subdominio_oficial=""
     printf "${YELLOW} >> API Oficial não será instalada.${WHITE}\n"
     sleep 2
   fi
@@ -2040,11 +2043,13 @@ PM2FRONTEND
 # Verificar DNS da API Oficial
 verificar_dns_apioficial() {
   if [ "${instalar_api_oficial}" != "s" ]; then
+    printf "${YELLOW} >> Pulando verificação DNS da API Oficial (não será instalada)...${WHITE}\n"
     return 0
   fi
   
   banner
   printf "${WHITE} >> Verificando o DNS do subdomínio da API Oficial...\n"
+  printf "${YELLOW} >> Subdomínio: ${subdominio_oficial}${WHITE}\n"
   echo
   sleep 2
 
@@ -2083,11 +2088,18 @@ verificar_dns_apioficial() {
 # Configurar Nginx para API Oficial
 configurar_nginx_apioficial() {
   if [ "${instalar_api_oficial}" != "s" ]; then
+    printf "${YELLOW} >> Pulando configuração da API Oficial (não será instalada)...${WHITE}\n"
+    return 0
+  fi
+  
+  if [ -z "${subdominio_oficial}" ]; then
+    printf "${RED} >> ERRO: subdominio_oficial está vazio! Pulando configuração da API Oficial.${WHITE}\n"
     return 0
   fi
   
   banner
   printf "${WHITE} >> Configurando Nginx para API Oficial...\n"
+  printf "${YELLOW} >> Subdomínio: ${subdominio_oficial}${WHITE}\n"
   echo
 
   local sites_available_path="/etc/nginx/sites-available/${empresa}-oficial"
@@ -2109,6 +2121,9 @@ configurar_nginx_apioficial() {
       
       # Criação do arquivo de configuração do Nginx
       sudo cat > ${sites_available_path} << EOF
+# Configuração Nginx para API Oficial
+# Subdomínio: ${oficial_hostname}
+# Porta: ${default_apioficial_port}
 upstream oficial {
     server 127.0.0.1:${default_apioficial_port};
     keepalive 32;
@@ -2145,8 +2160,20 @@ EOF
           printf "${RED} >> ERRO: O email para o Certbot não foi encontrado.${WHITE}\n"
           return 1
       fi
+      
+      if [ -z "${oficial_domain}" ]; then
+          printf "${RED} >> ERRO: Domínio da API Oficial está vazio!${WHITE}\n"
+          return 1
+      fi
 
-      printf "${WHITE} >> Executando: certbot -m ${email_deploy} --nginx --agree-tos -n -d ${oficial_domain}\n"
+      printf "${GREEN} >> ==================================================${WHITE}\n"
+      printf "${GREEN} >> EMITINDO SSL PARA API OFICIAL${WHITE}\n"
+      printf "${GREEN} >> Domínio: ${oficial_domain}${WHITE}\n"
+      printf "${GREEN} >> Email: ${email_deploy}${WHITE}\n"
+      printf "${GREEN} >> Arquivo Nginx: ${sites_available_path}${WHITE}\n"
+      printf "${GREEN} >> ==================================================${WHITE}\n"
+      echo
+      
       sudo certbot -m "${email_deploy}" \
                   --nginx \
                   --agree-tos \
@@ -2395,6 +2422,9 @@ config_nginx_base() {
     frontend_hostname=$(echo "${subdominio_frontend/https:\/\//}")
     sudo su - root <<EOF
 cat > /etc/nginx/sites-available/${empresa}-frontend << 'END'
+# Configuração Nginx para FRONTEND
+# Subdomínio: ${frontend_hostname}
+# Porta: ${frontend_port}
 server {
   server_name ${frontend_hostname};
   location / {
@@ -2421,6 +2451,9 @@ EOF
     backend_hostname=$(echo "${subdominio_backend/https:\/\//}")
     sudo su - root <<EOF
 cat > /etc/nginx/sites-available/${empresa}-backend << 'END'
+# Configuração Nginx para BACKEND
+# Subdomínio: ${backend_hostname}
+# Porta: ${backend_port}
 upstream backend {
         server 127.0.0.1:${backend_port};
         keepalive 32;
@@ -2450,6 +2483,14 @@ EOF
     printf "${WHITE} >> Emitindo SSL do ${subdominio_backend}...\n"
     echo
     backend_domain=$(echo "${subdominio_backend/https:\/\//}")
+    
+    printf "${GREEN} >> ==================================================${WHITE}\n"
+    printf "${GREEN} >> EMITINDO SSL PARA BACKEND${WHITE}\n"
+    printf "${GREEN} >> Domínio: ${backend_domain}${WHITE}\n"
+    printf "${GREEN} >> Email: ${email_deploy}${WHITE}\n"
+    printf "${GREEN} >> ==================================================${WHITE}\n"
+    echo
+    
     sudo su - root <<EOF
     certbot -m ${email_deploy} \
             --nginx \
@@ -2464,6 +2505,14 @@ EOF
     printf "${WHITE} >> Emitindo SSL do ${subdominio_frontend}...\n"
     echo
     frontend_domain=$(echo "${subdominio_frontend/https:\/\//}")
+    
+    printf "${GREEN} >> ==================================================${WHITE}\n"
+    printf "${GREEN} >> EMITINDO SSL PARA FRONTEND${WHITE}\n"
+    printf "${GREEN} >> Domínio: ${frontend_domain}${WHITE}\n"
+    printf "${GREEN} >> Email: ${email_deploy}${WHITE}\n"
+    printf "${GREEN} >> ==================================================${WHITE}\n"
+    echo
+    
     sudo su - root <<EOF
     certbot -m ${email_deploy} \
             --nginx \
