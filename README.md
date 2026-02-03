@@ -283,10 +283,6 @@ O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primei
 
 Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy/backups/`.
 
-## 📄 Licença
-
-Proprietário - Todos os direitos reservados
-
 ## 📋 Pré-requisitos
 
 ### Servidor
@@ -349,6 +345,10 @@ sudo ./instalador_apioficial.sh
 ```
 
 ---
+
+## 📄 Licença
+
+Proprietário - Todos os direitos reservados
 
 **Versão:** 3.0.0  
 **Última atualização:** 31/01/2026  
