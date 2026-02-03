@@ -45,132 +45,6 @@ O script instala automaticamente:
 ✅ **PM2** - Gerenciador de processos  
 ✅ **Certbot** - Certificados SSL automáticos  
 
-## 📋 Pré-requisitos
-
-### Servidor
-- Ubuntu 22.04 ou 24.04 LTS
-- 4GB RAM mínimo (recomendado: 8GB)
-- 2 vCPUs mínimo
-- 40GB espaço em disco
-- Acesso root ou sudo
-
-### DNS
-- Domínio/subdomínio apontando para o IP do servidor
-- Exemplo:
-  - `api.seudominio.com.br` → Backend
-  - `app.seudominio.com.br` → Frontend
-
-### GitHub
-- **Repositórios Públicos:** Não requer autenticação
-- **Repositórios Privados:** Deploy Key SSH (gerada automaticamente pelo script)
-- Deploy Keys devem ser adicionadas em: Settings > Deploy keys > Add deploy key
-
-## 🛠️ Scripts Disponíveis
-
-### instalador_single.sh
-Instalação completa do zero:
-- Configura sistema operacional
-- Instala todas as dependências
-- Clona código do repositório
-- Configura bancos de dados
-- Compila backend e frontend
-- Configura Nginx e SSL
-- Inicia serviços com PM2
-
-```bash
-sudo ./instalador_single.sh
-```
-
-### atualizador_remoto.sh
-Atualiza sistema já instalado:
-- Faz backup do banco de dados
-- Atualiza código (git pull)
-- Reinstala dependências npm
-- Recompila backend e frontend
-- Executa migrations
-- Reinicia serviços
-
-```bash
-sudo ./atualizador_remoto.sh
-```
-
-### instalador_apioficial.sh
-Instala/atualiza apenas API Oficial:
-- Cria banco separado
-- Instala dependências
-- Configura Prisma
-- Configura Nginx para API
-- Emite certificado SSL
-
-```bash
-sudo ./instalador_apioficial.sh
-```
-
-## 🔄 Atualização da Instalação
-
-Use a atualização quando houver **mudanças no código** do frontend ou do backend (novas versões, correções ou funcionalidades publicadas no repositório). A atualização não altera configurações de DNS, Nginx ou SSL; apenas atualiza o código, dependências e banco de dados.
-
-### Quando fazer atualização
-
-- Saiu nova versão do CRM no repositório
-- Foram publicadas correções ou melhorias no backend ou frontend
-- Você fez alterações no repositório e quer aplicar no servidor
-
-### O que a atualização faz
-
-1. **Backup** (opcional) – Faz backup do banco de dados PostgreSQL antes de alterar nada
-2. **Código** – Atualiza o código do repositório (`git pull` / `git fetch`)
-3. **Backend** – Reinstala dependências npm, recompila (build) e executa migrations
-4. **Frontend** – Reinstala dependências npm e gera novo build
-5. **Serviços** – Reinicia os processos no PM2 (backend e frontend)
-
-Configurações de ambiente (`.env`), Nginx, SSL e usuários **não são alteradas**.
-
-### Opção 1: Pelo menu do instalador
-
-Se os scripts estão em `/root/crm-setup` (ou no diretório onde você rodou a primeira instalação):
-
-```bash
-cd /root/crm-setup
-sudo ./instalador_single.sh
-```
-
-No menu, escolha:
-
-```
->> [2] Atualizar nome_do_titulo
-```
-
-O script vai pedir se deseja fazer backup do banco, em seguida atualizar backend, frontend e reiniciar o PM2.
-
-### Opção 2: Script de atualização direta
-
-Para rodar só a atualização, sem abrir o menu:
-
-```bash
-cd /root/crm-setup
-git pull
-sudo chmod +x atualizador_remoto.sh
-sudo ./atualizador_remoto.sh
-```
-
-O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação.
-
-### Pré-requisitos para atualizar
-
-- Instalação feita anteriormente com `instalador_single.sh`
-- Arquivo `VARIAVEIS_INSTALACAO` presente no diretório dos scripts (ex.: `/root/crm-setup`)
-- Acesso ao repositório (HTTPS ou SSH/Deploy Key) já configurado na primeira instalação
-- Servidor com acesso à internet para `git pull` e `npm install`
-
-### Após a atualização
-
-- Conferir se os serviços subiram: `pm2 status`
-- Ver logs em caso de erro: `pm2 logs`
-- Testar frontend e backend nas URLs configuradas (ex.: https://app.seudominio.com.br e https://api.seudominio.com.br)
-
-Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy/backups/`.
-
 ## 📝 Durante a Instalação
 
 O instalador solicitará:
@@ -344,9 +218,135 @@ git remote set-url origin git@github.com:usuario/repositorio.git
 git fetch origin
 ```
 
+## 🔄 Atualização da Instalação
+
+Use a atualização quando houver **mudanças no código** do frontend ou do backend (novas versões, correções ou funcionalidades publicadas no repositório). A atualização não altera configurações de DNS, Nginx ou SSL; apenas atualiza o código, dependências e banco de dados.
+
+### Quando fazer atualização
+
+- Saiu nova versão do CRM no repositório
+- Foram publicadas correções ou melhorias no backend ou frontend
+- Você fez alterações no repositório e quer aplicar no servidor
+
+### O que a atualização faz
+
+1. **Backup** (opcional) – Faz backup do banco de dados PostgreSQL antes de alterar nada
+2. **Código** – Atualiza o código do repositório (`git pull` / `git fetch`)
+3. **Backend** – Reinstala dependências npm, recompila (build) e executa migrations
+4. **Frontend** – Reinstala dependências npm e gera novo build
+5. **Serviços** – Reinicia os processos no PM2 (backend e frontend)
+
+Configurações de ambiente (`.env`), Nginx, SSL e usuários **não são alteradas**.
+
+### Opção 1: Pelo menu do instalador
+
+Se os scripts estão em `/root/crm-setup` (ou no diretório onde você rodou a primeira instalação):
+
+```bash
+cd /root/crm-setup
+sudo ./instalador_single.sh
+```
+
+No menu, escolha:
+
+```
+>> [2] Atualizar nome_do_titulo
+```
+
+O script vai pedir se deseja fazer backup do banco, em seguida atualizar backend, frontend e reiniciar o PM2.
+
+### Opção 2: Script de atualização direta
+
+Para rodar só a atualização, sem abrir o menu:
+
+```bash
+cd /root/crm-setup
+git pull
+sudo chmod +x atualizador_remoto.sh
+sudo ./atualizador_remoto.sh
+```
+
+O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação.
+
+### Pré-requisitos para atualizar
+
+- Instalação feita anteriormente com `instalador_single.sh`
+- Arquivo `VARIAVEIS_INSTALACAO` presente no diretório dos scripts (ex.: `/root/crm-setup`)
+- Acesso ao repositório (HTTPS ou SSH/Deploy Key) já configurado na primeira instalação
+- Servidor com acesso à internet para `git pull` e `npm install`
+
+### Após a atualização
+
+- Conferir se os serviços subiram: `pm2 status`
+- Ver logs em caso de erro: `pm2 logs`
+- Testar frontend e backend nas URLs configuradas (ex.: https://app.seudominio.com.br e https://api.seudominio.com.br)
+
+Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy/backups/`.
+
 ## 📄 Licença
 
 Proprietário - Todos os direitos reservados
+
+## 📋 Pré-requisitos
+
+### Servidor
+- Ubuntu 22.04 ou 24.04 LTS
+- 4GB RAM mínimo (recomendado: 8GB)
+- 2 vCPUs mínimo
+- 40GB espaço em disco
+- Acesso root ou sudo
+
+### DNS
+- Domínio/subdomínio apontando para o IP do servidor
+- Exemplo:
+  - `api.seudominio.com.br` → Backend
+  - `app.seudominio.com.br` → Frontend
+
+### GitHub
+- **Repositórios Públicos:** Não requer autenticação
+- **Repositórios Privados:** Deploy Key SSH (gerada automaticamente pelo script)
+- Deploy Keys devem ser adicionadas em: Settings > Deploy keys > Add deploy key
+
+## 🛠️ Scripts Disponíveis
+
+### instalador_single.sh
+Instalação completa do zero:
+- Configura sistema operacional
+- Instala todas as dependências
+- Clona código do repositório
+- Configura bancos de dados
+- Compila backend e frontend
+- Configura Nginx e SSL
+- Inicia serviços com PM2
+
+```bash
+sudo ./instalador_single.sh
+```
+
+### atualizador_remoto.sh
+Atualiza sistema já instalado:
+- Faz backup do banco de dados
+- Atualiza código (git pull)
+- Reinstala dependências npm
+- Recompila backend e frontend
+- Executa migrations
+- Reinicia serviços
+
+```bash
+sudo ./atualizador_remoto.sh
+```
+
+### instalador_apioficial.sh
+Instala/atualiza apenas API Oficial:
+- Cria banco separado
+- Instala dependências
+- Configura Prisma
+- Configura Nginx para API
+- Emite certificado SSL
+
+```bash
+sudo ./instalador_apioficial.sh
+```
 
 ---
 
