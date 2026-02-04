@@ -16,7 +16,7 @@ git clone https://github.com/ai9tec/crm-setup
 cd crm-setup
 
 # 3. Dar permissões e executar
-sudo chmod +x instalador_single.sh atualizador_remoto.sh instalador_apioficial.sh
+sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh
 sudo ./instalador_single.sh
 ```
 
@@ -277,7 +277,22 @@ sudo chmod +x atualizador_remoto.sh
 sudo ./atualizador_remoto.sh
 ```
 
-O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação.
+O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios, branch e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação.
+
+### Opção 3: Atualização rápida (atualizador_remoto_FAST.sh)
+
+Para atualizar **mais rápido** quando **não houve mudança em dependências** (`package.json`): só puxa o código, faz build e reinicia. Não reinstala `node_modules` nem faz backup do banco.
+
+```bash
+cd /root/crm-setup
+sudo chmod +x atualizador_remoto_FAST.sh
+sudo ./atualizador_remoto_FAST.sh
+```
+
+**Use o FAST quando:** apenas o código do backend/frontend mudou (correções, textos, configs).  
+**Use o atualizador_remoto.sh quando:** houve alteração em `package.json`, nova versão do Node ou quiser backup do banco antes de atualizar.
+
+O FAST também usa a **branch** definida na instalação (`repo_branch` em `VARIAVEIS_INSTALACAO`).
 
 ### Pré-requisitos para atualizar
 
@@ -334,16 +349,30 @@ sudo ./instalador_single.sh
 ```
 
 ### atualizador_remoto.sh
-Atualiza sistema já instalado:
+Atualização completa do sistema já instalado:
 - Faz backup do banco de dados
 - Atualiza código na **branch definida na instalação** (git fetch + reset)
-- Reinstala dependências npm
+- Reinstala dependências npm (backend e frontend)
 - Recompila backend e frontend
 - Executa migrations
 - Reinicia serviços
 
 ```bash
 sudo ./atualizador_remoto.sh
+```
+
+### atualizador_remoto_FAST.sh
+Atualização **rápida** (sem reinstalar dependências):
+- Atualiza código na **branch definida na instalação** (git fetch + reset)
+- Otimiza banco (vacuum, reindex)
+- Apenas **build** do backend e frontend (não reinstala `node_modules`)
+- Executa migrations
+- Reinicia PM2 e Nginx
+
+Use quando não houver mudança em `package.json`. Mais rápido; em caso de dúvida, use `atualizador_remoto.sh`.
+
+```bash
+sudo ./atualizador_remoto_FAST.sh
 ```
 
 ### instalador_apioficial.sh
