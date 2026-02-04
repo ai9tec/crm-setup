@@ -74,7 +74,16 @@ O instalador solicitará:
    Settings > Deploy keys > Add deploy key
 ```
 
-### 2. URLs dos Subdomínios
+### 2. Branch do Repositório
+```
+>> Digite o nome da branch a ser usada:
+>> (ex: main, master, develop)
+
+> main
+```
+A branch informada será usada no clone e em todas as atualizações. Se deixar em branco, será usada a branch **main**.
+
+### 3. URLs dos Subdomínios
 ```
 >> Insira a URL do Backend:
 > https://api.seudominio.com.br
@@ -83,7 +92,7 @@ O instalador solicitará:
 > https://app.seudominio.com.br
 ```
 
-### 3. Informações da Empresa
+### 4. Informações da Empresa
 ```
 >> Digite o seu melhor email:
 > seu@email.com
@@ -98,7 +107,7 @@ O instalador solicitará:
 > SenhaMaster123
 ```
 
-### 4. Configurações da Aplicação
+### 5. Configurações da Aplicação
 ```
 >> Insira o Título da Aplicação:
 > Meu CRM
@@ -107,7 +116,7 @@ O instalador solicitará:
 > 5511999999999
 ```
 
-### 5. Integrações (Opcional)
+### 6. Integrações (Opcional)
 ```
 >> Digite o FACEBOOK_APP_ID caso tenha:
 > (deixe vazio se não tiver)
@@ -116,7 +125,7 @@ O instalador solicitará:
 > (deixe vazio se não tiver)
 ```
 
-### 6. Proxy e Portas
+### 7. Proxy e Portas
 ```
 >> Instalar usando Nginx ou Traefik?
 > nginx (recomendado)
@@ -171,6 +180,7 @@ sudo ./instalador_single.sh
 # Quando solicitado:
 >> Escolha o tipo de autenticação: 1
 >> Digite a URL HTTPS: https://github.com/ai9tec/crm.git
+>> Digite a branch: main
 
 # Continue com as demais configurações...
 ```
@@ -183,6 +193,7 @@ sudo ./instalador_single.sh
 # Quando solicitado:
 >> Escolha o tipo de autenticação: 2
 >> Digite a URL SSH: git@github.com:meuusuario/meu-crm-privado.git
+>> Digite a branch: main
 
 # Script gera a chave SSH e exibe:
 [Chave pública SSH aparece na tela]
@@ -231,7 +242,7 @@ Use a atualização quando houver **mudanças no código** do frontend ou do bac
 ### O que a atualização faz
 
 1. **Backup** (opcional) – Faz backup do banco de dados PostgreSQL antes de alterar nada
-2. **Código** – Atualiza o código do repositório (`git pull` / `git fetch`)
+2. **Código** – Atualiza o código na **mesma branch** escolhida na instalação (`git fetch` + `git reset --hard origin/<branch>`), usando o valor salvo em `VARIAVEIS_INSTALACAO` (`repo_branch`)
 3. **Backend** – Reinstala dependências npm, recompila (build) e executa migrations
 4. **Frontend** – Reinstala dependências npm e gera novo build
 5. **Serviços** – Reinicia os processos no PM2 (backend e frontend)
@@ -273,7 +284,9 @@ O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primei
 - Instalação feita anteriormente com `instalador_single.sh`
 - Arquivo `VARIAVEIS_INSTALACAO` presente no diretório dos scripts (ex.: `/root/crm-setup`)
 - Acesso ao repositório (HTTPS ou SSH/Deploy Key) já configurado na primeira instalação
-- Servidor com acesso à internet para `git pull` e `npm install`
+- Servidor com acesso à internet para `git fetch` e `npm install`
+
+A **branch** usada na atualização é a que foi informada na instalação (salva como `repo_branch` em `VARIAVEIS_INSTALACAO`). Para mudar de branch, edite esse arquivo ou reinstale.
 
 ### Após a atualização
 
@@ -309,7 +322,8 @@ Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy
 Instalação completa do zero:
 - Configura sistema operacional
 - Instala todas as dependências
-- Clona código do repositório
+- Pergunta a **branch** do repositório (ex: main, master, develop)
+- Clona código do repositório na branch informada
 - Configura bancos de dados
 - Compila backend e frontend
 - Configura Nginx e SSL
@@ -322,7 +336,7 @@ sudo ./instalador_single.sh
 ### atualizador_remoto.sh
 Atualiza sistema já instalado:
 - Faz backup do banco de dados
-- Atualiza código (git pull)
+- Atualiza código na **branch definida na instalação** (git fetch + reset)
 - Reinstala dependências npm
 - Recompila backend e frontend
 - Executa migrations
@@ -353,4 +367,4 @@ Proprietário - Todos os direitos reservados
 **Versão:** 3.0.0  
 **Última atualização:** 31/01/2026  
 **Compatibilidade:** Ubuntu 22.04, 24.04 LTS  
-**Principais mudanças v3.0:** Deploy Keys SSH substituem tokens, script totalmente independente de repositórios específicos
+**Principais mudanças v3.0:** Deploy Keys SSH substituem tokens; script independente de repositório; escolha de branch na instalação; atualizadores (remoto, FAST, PRO e opção 2 do instalador) usam a branch salva em VARIAVEIS_INSTALACAO
