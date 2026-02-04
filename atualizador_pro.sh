@@ -483,14 +483,11 @@ EOF
 }
 
 baixa_codigo_atualizar() {
-  # Verifica se a variável empresa está definida
+  # Carrega variáveis da instalação (empresa, repo_branch, etc.)
+  dummy_carregar_variaveis
   if [ -z "${empresa}" ]; then
-    printf "${RED} >> ERRO: Variável 'empresa' não está definida!\n${WHITE}"
-    dummy_carregar_variaveis
-    if [ -z "${empresa}" ]; then
-      printf "${RED} >> ERRO: Não foi possível carregar a variável 'empresa'. Abortando.\n${WHITE}"
-      exit 1
-    fi
+    printf "${RED} >> ERRO: Variável 'empresa' não está definida! Verifique o arquivo VARIAVEIS_INSTALACAO.\n${WHITE}"
+    exit 1
   fi
   
   # Verifica se o diretório existe
@@ -525,22 +522,6 @@ STOPPM2
   printf "${WHITE} >> Atualizando a Aplicação da Empresa ${empresa}... \n"
   sleep 2
 
-  # Verifica se a variável empresa está definida
-  if [ -z "${empresa}" ]; then
-    printf "${RED} >> ERRO: Variável 'empresa' não está definida!\n${WHITE}"
-    dummy_carregar_variaveis
-    if [ -z "${empresa}" ]; then
-      printf "${RED} >> ERRO: Não foi possível carregar a variável 'empresa'. Abortando.\n${WHITE}"
-      exit 1
-    fi
-  fi
-
-  # Verifica se o diretório existe
-  if [ ! -d "/home/deploy/${empresa}" ]; then
-    printf "${RED} >> ERRO: Diretório /home/deploy/${empresa} não existe!\n${WHITE}"
-    exit 1
-  fi
-
   source /home/deploy/${empresa}/frontend/.env 2>/dev/null || true
   frontend_port=${SERVER_PORT:-3000}
   sudo su - deploy <<UPDATEAPP
@@ -565,9 +546,10 @@ STOPPM2
   echo
   cd "\$APP_DIR"
   
+  # Usa a branch definida na instalação (VARIAVEIS_INSTALACAO -> repo_branch)
+  echo "Atualizando branch: ${repo_branch:-main}"
   git fetch origin
-  git checkout MULTI100-OFICIAL-u21
-  git reset --hard origin/MULTI100-OFICIAL-u21
+  git reset --hard origin/${repo_branch:-main}
   
   if [ ! -d "\$BACKEND_DIR" ]; then
     echo "ERRO: Diretório do backend não existe: \$BACKEND_DIR"

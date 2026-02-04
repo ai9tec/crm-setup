@@ -60,6 +60,7 @@ salvar_variaveis() {
   echo "facebook_app_id=${facebook_app_id}" >>$ARQUIVO_VARIAVEIS
   echo "facebook_app_secret=${facebook_app_secret}" >>$ARQUIVO_VARIAVEIS
   echo "repo_url=${repo_url}" >>$ARQUIVO_VARIAVEIS
+  echo "repo_branch=${repo_branch}" >>$ARQUIVO_VARIAVEIS
   echo "repo_auth_type=${repo_auth_type}" >>$ARQUIVO_VARIAVEIS
   echo "proxy=${proxy}" >>$ARQUIVO_VARIAVEIS
   echo "backend_port=${backend_port}" >>$ARQUIVO_VARIAVEIS
@@ -147,105 +148,6 @@ verificar_arquivos_existentes() {
   fi
 }
 
-# Função para instalar API WhatsMeow
-# NOTA: Esta função está DESABILITADA no menu (opção 3 comentada)
-# Motivo: Depende do repositório privado scriptswhitelabel/m.git
-# Para reativar: Descomentar opção 3 no menu_ferramentas() E adaptar REPO_URL na linha 187
-instalar_whatsmeow() {
-  banner
-  printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-  printf "${YELLOW}⚠️  ATENÇÃO:${WHITE}\n"
-  echo
-  printf "${WHITE}   A WhatsMeow é uma API Alternativa à Bayles, muito estável.${WHITE}\n"
-  printf "${WHITE}   Ela está disponível apenas para a versão do MultiFlow PRO${WHITE}\n"
-  printf "${WHITE}   - A partir da Versão ${BLUE}6.4.4${WHITE}.${WHITE}\n"
-  echo
-  printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
-  echo
-  printf "${WHITE}   Deseja continuar? (S/N):${WHITE}\n"
-  echo
-  read -p "> " confirmacao_whatsmeow
-  confirmacao_whatsmeow=$(echo "${confirmacao_whatsmeow}" | tr '[:lower:]' '[:upper:]')
-  echo
-  
-  if [ "${confirmacao_whatsmeow}" != "S" ]; then
-    printf "${GREEN} >> Operação cancelada. Voltando ao menu de ferramentas...${WHITE}\n"
-    sleep 2
-    return
-  fi
-  
-  banner
-  printf "${WHITE} >> Digite o TOKEN de autorização do GitHub para acesso ao repositório multiflow-pro:${WHITE}\n"
-  echo
-  read -p "> " TOKEN_AUTH
-  
-  # Verificar se o token foi informado
-  if [ -z "$TOKEN_AUTH" ]; then
-    printf "${RED}❌ ERRO: Token de autorização não pode estar vazio.${WHITE}\n"
-    sleep 2
-    return
-  fi
-  
-  printf "${BLUE} >> Token de autorização recebido. Validando...${WHITE}\n"
-  echo
-  
-  # Validar o token usando a mesma lógica do atualizador_pro.sh
-  INSTALADOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  TEST_DIR="${INSTALADOR_DIR}/test_clone_$(date +%s)"
-  REPO_URL="https://${TOKEN_AUTH}@github.com/scriptswhitelabel/m.git"
-  
-  printf "${WHITE} >> Validando token com teste de git clone...\n"
-  echo
-  
-  # Tentar fazer clone de teste
-  if git clone --depth 1 "${REPO_URL}" "${TEST_DIR}" >/dev/null 2>&1; then
-    # Clone bem-sucedido, remover diretório de teste
-    rm -rf "${TEST_DIR}" >/dev/null 2>&1
-    printf "${GREEN}✅ Token validado com sucesso! Git clone funcionou corretamente.${WHITE}\n"
-    echo
-    sleep 2
-    
-    # Executar o instalador WhatsMeow
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    WHATSMEOW_SCRIPT="${SCRIPT_DIR}/instalador_whatsmeow.sh"
-    
-    if [ -f "$WHATSMEOW_SCRIPT" ]; then
-      printf "${GREEN} >> Executando Instalador API WhatsMeow...${WHITE}\n"
-      echo
-      bash "$WHATSMEOW_SCRIPT"
-      echo
-      printf "${GREEN} >> Pressione Enter para voltar ao menu de ferramentas...${WHITE}\n"
-      read -r
-    else
-      printf "${RED} >> Erro: Arquivo ${WHATSMEOW_SCRIPT} não encontrado!${WHITE}\n"
-      printf "${RED} >> Certifique-se de que o arquivo instalador_whatsmeow.sh está no mesmo diretório do instalador.${WHITE}\n"
-      sleep 3
-    fi
-  else
-    # Clone falhou, token inválido
-    rm -rf "${TEST_DIR}" >/dev/null 2>&1
-    printf "${RED}══════════════════════════════════════════════════════════════════${WHITE}\n"
-    printf "${RED}❌ ERRO: Token de autorização inválido!${WHITE}\n"
-    echo
-    printf "${RED}   O teste de git clone falhou. O token informado não tem acesso ao repositório multiflow-pro.${WHITE}\n"
-    echo
-    printf "${YELLOW}   ⚠️  IMPORTANTE:${WHITE}\n"
-    printf "${YELLOW}   O .${WHITE}\n"
-    printf "${YELLOW}   Para solicitar acesso ou analisar a disponibilidade,${WHITE}\n"
-    printf "${YELLOW}   entre em contato com o suporte:${WHITE}\n"
-    echo
-    printf "${BLUE}   📱 WhatsApp:${WHITE}\n"
-    printf "${WHITE}   • https://wa.me/55${WHITE}\n"
-    printf "${WHITE}   • https://wa.me/558${WHITE}\n"
-    echo
-    printf "${RED}   Instalação interrompida.${WHITE}\n"
-    printf "${RED}══════════════════════════════════════════════════════════════════${WHITE}\n"
-    echo
-    printf "${GREEN} >> Pressione Enter para voltar ao menu de ferramentas...${WHITE}\n"
-    read -r
-  fi
-}
-
 # Menu de Ferramentas
 menu_ferramentas() {
   while true; do
@@ -254,7 +156,6 @@ menu_ferramentas() {
     echo
     printf "   [${BLUE}1${WHITE}] Instalador RabbitMQ\n"
     printf "   [${BLUE}2${WHITE}] Instalar Push Notifications\n"
-    # printf "   [${BLUE}3${WHITE}] Instalar API WhatsMeow\n"   # Desabilitado - Requer repositório privado
     printf "   [${BLUE}0${WHITE}] Voltar ao Menu Principal\n"
     echo
     read -p "> " option_tools
@@ -289,9 +190,6 @@ menu_ferramentas() {
         sleep 3
       fi
       ;;
-    # 3)  # WhatsMeow desabilitado - requer repositório privado scriptswhitelabel/m.git
-    #   instalar_whatsmeow
-    #   ;;
     0)
       return
       ;;
@@ -666,6 +564,21 @@ questoes_variaveis_base() {
     return
   fi
   
+  # DEFINE BRANCH DO REPOSITÓRIO
+  banner
+  printf "${WHITE} >> Digite o nome da branch a ser usada: \n"
+  printf "${WHITE} >> (ex: main, master, develop) \n"
+  echo
+  read -p "> " repo_branch
+  echo
+  if [ -z "${repo_branch}" ]; then
+    repo_branch="main"
+    printf "${YELLOW} >> Nenhuma branch informada. Usando branch padrão: main${WHITE}\n"
+  else
+    printf "${GREEN} >> Branch selecionada: ${repo_branch}${WHITE}\n"
+  fi
+  sleep 2
+  
   # PERGUNTA SOBRE API OFICIAL
   banner
   printf "${WHITE} >> Deseja instalar a API Oficial (WhatsApp Business)? (S/N): \n"
@@ -786,6 +699,7 @@ dados_instalacao_base() {
   printf "   ${WHITE}FACEBOOK_APP_SECRET: --->> ${YELLOW}${facebook_app_secret}\n"
   printf "   ${WHITE}Tipo de Autenticação: -->> ${YELLOW}${auth_display}\n"
   printf "   ${WHITE}URL do Repositório: ---->> ${YELLOW}${repo_url}\n"
+  printf "   ${WHITE}Branch: ---------------->> ${YELLOW}${repo_branch:-main}\n"
   printf "   ${WHITE}Proxy Usado: ----------->> ${YELLOW}${proxy}\n"
   printf "   ${WHITE}Porta Backend: --------->> ${YELLOW}${backend_port}\n"
   printf "   ${WHITE}Porta Frontend: -------->> ${YELLOW}${frontend_port}\n"
@@ -1540,8 +1454,8 @@ baixa_codigo_base() {
         chmod 600 ~/.ssh/id_rsa
         chmod 644 ~/.ssh/id_rsa.pub
         
-        # Clone usando SSH
-        GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" git clone ${repo_url} ${dest_dir}
+        # Clone usando SSH (branch: ${repo_branch:-main})
+        GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" git clone -b ${repo_branch:-main} ${repo_url} ${dest_dir}
 GITCLONE
       
       clone_status=$?
@@ -1556,8 +1470,8 @@ GITCLONE
         repo_url="https://${repo_url}"
       fi
       
-      # Clone direto como root e depois ajusta permissões
-      git clone ${repo_url} ${dest_dir}
+      # Clone direto como root e depois ajusta permissões (branch: ${repo_branch:-main})
+      git clone -b ${repo_branch:-main} ${repo_url} ${dest_dir}
       clone_status=$?
     fi
     
@@ -2674,6 +2588,17 @@ backup_app_atualizar() {
 }
 
 baixa_codigo_atualizar() {
+  # Carrega variáveis da instalação (empresa, repo_branch, etc.)
+  carregar_variaveis
+  if [ -z "${empresa}" ]; then
+    printf "${RED} >> ERRO: Variável 'empresa' não está definida! Verifique o arquivo VARIAVEIS_INSTALACAO.\n${WHITE}"
+    exit 1
+  fi
+  if [ ! -d "/home/deploy/${empresa}" ]; then
+    printf "${RED} >> ERRO: Diretório /home/deploy/${empresa} não existe!\n${WHITE}"
+    exit 1
+  fi
+
   banner
   printf "${WHITE} >> Recuperando Permissões... \n"
   echo
@@ -2729,9 +2654,10 @@ STOPPM2
   printf "${WHITE} >> Atualizando Backend...\n"
   echo
   cd "\$APP_DIR"
+  # Usa a branch definida na instalação (VARIAVEIS_INSTALACAO -> repo_branch)
+  echo "Atualizando branch: ${repo_branch:-main}"
   git fetch origin
-  git checkout MULTI100-OFICIAL-u21
-  git reset --hard origin/MULTI100-OFICIAL-u21
+  git reset --hard origin/${repo_branch:-main}
   
   if [ ! -d "\$BACKEND_DIR" ]; then
     echo "ERRO: Diretório do backend não existe: \$BACKEND_DIR"

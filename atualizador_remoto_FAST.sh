@@ -55,31 +55,6 @@ backup_app_atualizar() {
     # printf "${GREEN} >> Backup do banco de dados ${empresa} concluído. Arquivo de backup: ${backup_file}\n"
     sleep 2
   } || trata_erro "backup_app_atualizar"
-
-# Dados do Whaticket
-TOKEN=""
-QUEUE_ID="15"
-USER_ID=""
-MENSAGEM="🚨 INICIANDO Atualização "FAST" do ${nome_titulo}"
-
-# Lista de números
-NUMEROS=("${numero_suporte}" "557")
-
-# Enviar para cada número
-for NUMERO in "${NUMEROS[@]}"; do
-  curl -s -X POST https://apiwed \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "number": "'"$NUMERO"'",
-      "body": "'"$MENSAGEM"'",
-      "userId": "'"$USER_ID"'",
-      "queueId": "'"$QUEUE_ID"'",
-      "sendSignature": false,
-      "closeTicket": true
-    }'
-done
-  
 }
 
 otimiza_banco_atualizar() {
@@ -96,6 +71,13 @@ EOF
 }
 
 baixa_codigo_atualizar() {
+  # Carrega variáveis da instalação (empresa, repo_branch, etc.)
+  dummy_carregar_variaveis
+  if [ -z "${empresa}" ]; then
+    printf "${RED} >> ERRO: Variável 'empresa' não está definida! Verifique o arquivo VARIAVEIS_INSTALACAO.\n${WHITE}"
+    exit 1
+  fi
+
   printf "${WHITE} >> Recuperando Permissões da empresa ${empresa}... \n"
   sleep 2
   chown deploy -R /home/deploy/${empresa}
@@ -123,12 +105,10 @@ printf "${WHITE} >> Atualizando Backend...\n"
 echo
 cd /home/deploy/${empresa}
 
-# git fetch origin
-# git checkout MULTI100-OFICIAL-u21
-# git reset --hard origin/MULTI100-OFICIAL-u21
-
-git reset --hard
-git pull
+# Usa a branch definida na instalação (VARIAVEIS_INSTALACAO -> repo_branch)
+echo "Atualizando branch: ${repo_branch:-main}"
+git fetch origin
+git reset --hard origin/${repo_branch:-main}
 
 cd /home/deploy/${empresa}/backend
 # npm prune --force > /dev/null 2>&1
@@ -176,31 +156,6 @@ EOF
   printf "${WHITE} >> Atualização do ${nome_titulo} concluída...\n"
   echo
   sleep 5
-
-# Dados do Whaticket
-TOKEN="ul"
-QUEUE_ID="15"
-USER_ID=""
-MENSAGEM="🚨 Atualização "FAST" do ${nome_titulo} FINALIZADA"
-
-# Lista de números
-NUMEROS=("${numero_suporte}" "5")
-
-# Enviar para cada número
-for NUMERO in "${NUMEROS[@]}"; do
-  curl -s -X POST https://apiw \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "number": "'"$NUMERO"'",
-      "body": "'"$MENSAGEM"'",
-      "userId": "'"$USER_ID"'",
-      "queueId": "'"$QUEUE_ID"'",
-      "sendSignature": false,
-      "closeTicket": true
-    }'
-done
-
 }
 
 # Execução automática do fluxo de atualização

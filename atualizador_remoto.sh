@@ -241,14 +241,11 @@ EOF
 }
 
 baixa_codigo_atualizar() {
-  # Verifica se a variável empresa está definida
+  # Carrega variáveis (empresa, repo_branch, etc.) do arquivo da instalação
+  dummy_carregar_variaveis
   if [ -z "${empresa}" ]; then
-    printf "${RED} >> ERRO: Variável 'empresa' não está definida!\n${WHITE}"
-    dummy_carregar_variaveis
-    if [ -z "${empresa}" ]; then
-      printf "${RED} >> ERRO: Não foi possível carregar a variável 'empresa'. Abortando.\n${WHITE}"
-      exit 1
-    fi
+    printf "${RED} >> ERRO: Variável 'empresa' não está definida! Verifique o arquivo VARIAVEIS_INSTALACAO.\n${WHITE}"
+    exit 1
   fi
   
   # Verifica se o diretório existe
@@ -307,9 +304,10 @@ STOPPM2
   echo
   cd "\$APP_DIR"
   
+  # Usa a branch definida na instalação (VARIAVEIS_INSTALACAO -> repo_branch)
+  echo "Atualizando branch: ${repo_branch:-main}"
   git fetch origin
-  git checkout MULTI100-OFICIAL-u21
-  git reset --hard origin/MULTI100-OFICIAL-u21
+  git reset --hard origin/${repo_branch:-main}
   
   if [ ! -d "\$BACKEND_DIR" ]; then
     echo "ERRO: Diretório do backend não existe: \$BACKEND_DIR"
