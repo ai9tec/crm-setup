@@ -2591,10 +2591,43 @@ preparar_git_para_atualizacao() {
     printf "${WHITE} >> Inicializando Git e alinhando com o repositório remoto (branch: ${repo_branch:-main})...${WHITE}\n"
     echo
     if [ "${repo_auth_type}" = "ssh" ]; then
+      # Garante que a Deploy Key existe (gera e exibe se não existir)
       if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
-        printf "${WHITE} >> Deploy Key não encontrada. Configurando...${WHITE}\n"
+        printf "${WHITE} >> Deploy Key não encontrada. Gerando e configurando...${WHITE}\n"
         configura_deploy_key_ssh || exit 1
+      else
+        # Configura known_hosts para GitHub se ainda não estiver (evita prompt)
+        sudo su - deploy <<'SSHCONFIG' 2>/dev/null || true
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          [ -f ~/.ssh/id_rsa ] && chmod 600 ~/.ssh/id_rsa
+          [ -f ~/.ssh/id_rsa.pub ] && chmod 644 ~/.ssh/id_rsa.pub
+          grep -q github.com ~/.ssh/known_hosts 2>/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+SSHCONFIG
       fi
+      # Testa acesso ao repositório ANTES de init/fetch (sem precisar de .git)
+      printf "${WHITE} >> Testando acesso ao repositório: ${BLUE}${repo_url}${WHITE}\n"
+      if ! sudo -u deploy env GIT_SSH_COMMAND="ssh -i /home/deploy/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" git ls-remote "${repo_url}" HEAD &>/dev/null; then
+        banner
+        printf "${YELLOW} >> Ainda não há acesso ao repositório. Adicione a Deploy Key no GitHub.${WHITE}\n"
+        printf "${WHITE} >> Repositório: ${BLUE}${repo_url}${WHITE}\n"
+        printf "${WHITE} >> No GitHub: Settings > Deploy keys > Add deploy key${WHITE}\n"
+        echo
+        printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
+        printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+        echo
+        sudo cat /home/deploy/.ssh/id_rsa.pub
+        echo
+        printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+        echo
+        read -p "Após adicionar a Deploy Key no GitHub, pressione Enter para continuar..."
+        if ! sudo -u deploy env GIT_SSH_COMMAND="ssh -i /home/deploy/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" git ls-remote "${repo_url}" HEAD &>/dev/null; then
+          printf "${RED} >> ERRO: Acesso ao repositório falhou. Verifique a Deploy Key e tente novamente.${WHITE}\n"
+          exit 1
+        fi
+      fi
+      printf "${GREEN} >> Acesso ao repositório OK. Inicializando Git no diretório da aplicação...${WHITE}\n"
+      echo
       sudo su - deploy <<INITGIT
         set -e
         cd /home/deploy/${empresa}
