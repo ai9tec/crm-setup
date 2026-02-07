@@ -2592,9 +2592,13 @@ preparar_git_para_atualizacao() {
     fi
 
     sudo -u deploy git -C "/home/deploy/${empresa}" remote set-url origin "${repo_url}" 2>/dev/null || true
-    if ! sudo -u deploy git -C "/home/deploy/${empresa}" fetch origin 2>/dev/null; then
+    printf "${WHITE} >> Testando acesso ao repositório: ${BLUE}${repo_url}${WHITE}\n"
+    printf "${WHITE} >> (A Deploy Key deve estar em Settings > Deploy keys desse repositório no GitHub.)\n"
+    echo
+    if ! sudo -u deploy env GIT_SSH_COMMAND="ssh -i /home/deploy/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" git -C "/home/deploy/${empresa}" fetch origin 2>&1; then
       banner
       printf "${YELLOW} >> Falha ao acessar o repositório. Confirme que a Deploy Key foi adicionada no GitHub.${WHITE}\n"
+      printf "${WHITE} >> Repositório esperado: ${BLUE}${repo_url}${WHITE}\n"
       echo
       printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
       printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
@@ -2605,7 +2609,7 @@ preparar_git_para_atualizacao() {
       printf "${WHITE} >> No GitHub: Settings > Deploy keys > Add deploy key | Cole a chave acima${WHITE}\n"
       echo
       read -p "Após adicionar a Deploy Key no GitHub, pressione Enter para tentar novamente..."
-      if ! sudo -u deploy git -C "/home/deploy/${empresa}" fetch origin; then
+      if ! sudo -u deploy env GIT_SSH_COMMAND="ssh -i /home/deploy/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" git -C "/home/deploy/${empresa}" fetch origin; then
         printf "${RED} >> ERRO: Ainda sem acesso ao repositório. Verifique a Deploy Key e tente novamente.${WHITE}\n"
         exit 1
       fi
