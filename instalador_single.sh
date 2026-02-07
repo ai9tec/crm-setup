@@ -381,6 +381,23 @@ instalacao_base() {
 
 # Etapa de instalação
 atualizar_base() {
+  carregar_variaveis
+  if [ ! -f "$ARQUIVO_VARIAVEIS" ]; then
+    banner
+    printf "${RED} >> Para atualizar é necessário o arquivo VARIAVEIS_INSTALACAO neste diretório.${WHITE}\n"
+    printf "${WHITE} >> Crie-o com empresa, repo_url, repo_branch, subdominio_backend, subdominio_frontend, etc. Consulte a documentação.${WHITE}\n"
+    echo
+    read -p "Pressione Enter para voltar ao menu..."
+    return
+  fi
+  if [ -z "${empresa}" ]; then
+    banner
+    printf "${RED} >> Variável 'empresa' não definida no VARIAVEIS_INSTALACAO. Corrija o arquivo e tente novamente.${WHITE}\n"
+    echo
+    read -p "Pressione Enter para voltar ao menu..."
+    return
+  fi
+  preparar_git_para_atualizacao || trata_erro "preparar_git_para_atualizacao"
   backup_app_atualizar || trata_erro "backup_app_atualizar"
   instala_ffmpeg_base || trata_erro "instala_ffmpeg_base"
   config_cron_base || trata_erro "config_cron_base"
@@ -2561,9 +2578,46 @@ fim_instalacao_base() {
 #                         ATUALIZAÇÃO                          #
 ################################################################
 
+# Garante Deploy Key e remote Git antes do fetch (instalação manual pode não ter chave)
+preparar_git_para_atualizacao() {
+  if [ ! -d "/home/deploy/${empresa}" ]; then
+    printf "${RED} >> ERRO: Diretório /home/deploy/${empresa} não existe. Atualização apenas para instalação existente.${WHITE}\n"
+    exit 1
+  fi
+
+  if [ "${repo_auth_type}" = "ssh" ]; then
+    if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
+      printf "${WHITE} >> Deploy Key não encontrada. Configurando...${WHITE}\n"
+      configura_deploy_key_ssh || exit 1
+    fi
+
+    sudo -u deploy git -C "/home/deploy/${empresa}" remote set-url origin "${repo_url}" 2>/dev/null || true
+    if ! sudo -u deploy git -C "/home/deploy/${empresa}" fetch origin 2>/dev/null; then
+      banner
+      printf "${YELLOW} >> Falha ao acessar o repositório. Confirme que a Deploy Key foi adicionada no GitHub.${WHITE}\n"
+      echo
+      printf "${GREEN} >> Chave Pública SSH (Deploy Key):${WHITE}\n"
+      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+      echo
+      sudo cat /home/deploy/.ssh/id_rsa.pub
+      echo
+      printf "${YELLOW}══════════════════════════════════════════════════════════════════${WHITE}\n"
+      printf "${WHITE} >> No GitHub: Settings > Deploy keys > Add deploy key | Cole a chave acima${WHITE}\n"
+      echo
+      read -p "Após adicionar a Deploy Key no GitHub, pressione Enter para tentar novamente..."
+      if ! sudo -u deploy git -C "/home/deploy/${empresa}" fetch origin; then
+        printf "${RED} >> ERRO: Ainda sem acesso ao repositório. Verifique a Deploy Key e tente novamente.${WHITE}\n"
+        exit 1
+      fi
+    fi
+  else
+    # HTTPS ou outro: apenas garante remote com a URL do VARIAVEIS_INSTALACAO
+    sudo -u deploy git -C "/home/deploy/${empresa}" remote set-url origin "${repo_url}" 2>/dev/null || true
+  fi
+}
+
 backup_app_atualizar() {
   carregar_variaveis
-  source /home/deploy/${empresa}/backend/.env
   {
     banner
     printf "${WHITE} >> Antes de atualizar deseja fazer backup do banco de dados? ${GREEN}S/${RED}N:${WHITE}\n"
@@ -2572,7 +2626,7 @@ backup_app_atualizar() {
     echo
     confirmacao_backup=$(echo "${confirmacao_backup}" | tr '[:lower:]' '[:upper:]')
     if [ "${confirmacao_backup}" == "S" ]; then
-      db_password=$(grep "DB_PASS=" /home/deploy/${empresa}/backend/.env | cut -d '=' -f2)
+      db_password=$(grep -E '^DB_PASS=' "/home/deploy/${empresa}/backend/.env" 2>/dev/null | cut -d '=' -f2- | tr -d '\r"' || true)
       [ ! -d "/home/deploy/backups" ] && mkdir -p "/home/deploy/backups"
       backup_file="/home/deploy/backups/${empresa}_$(date +%d-%m-%Y_%Hh).sql"
       PGPASSWORD="${db_password}" pg_dump -U ${empresa} -h localhost ${empresa} >"${backup_file}"
@@ -2631,8 +2685,9 @@ STOPPM2
   echo
   sleep 2
 
-  source /home/deploy/${empresa}/frontend/.env
-  frontend_port=${SERVER_PORT:-3000}
+  # Lê apenas SERVER_PORT do .env (evita source: .env pode ter TOKEN etc. que quebram no shell)
+  frontend_port=$(grep -E '^SERVER_PORT=' "/home/deploy/${empresa}/frontend/.env" 2>/dev/null | cut -d '=' -f2- | tr -d '\r"' || true)
+  frontend_port=${frontend_port:-3000}
   sudo su - deploy <<UPDATEAPP
   # Configura PATH para Node.js e PM2
   if [ -d /usr/local/n/versions/node/20.19.4/bin ]; then
