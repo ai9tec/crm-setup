@@ -2578,11 +2578,45 @@ fim_instalacao_base() {
 #                         ATUALIZAÇÃO                          #
 ################################################################
 
-# Garante Deploy Key e remote Git antes do fetch (instalação manual pode não ter chave)
+# Garante Deploy Key e remote Git antes do fetch (instalação manual pode não ter chave nem .git)
 preparar_git_para_atualizacao() {
   if [ ! -d "/home/deploy/${empresa}" ]; then
     printf "${RED} >> ERRO: Diretório /home/deploy/${empresa} não existe. Atualização apenas para instalação existente.${WHITE}\n"
     exit 1
+  fi
+
+  # Instalação manual: diretório existe mas não é repositório Git — inicializa e alinha com o remoto
+  if [ ! -d "/home/deploy/${empresa}/.git" ]; then
+    printf "${YELLOW} >> O diretório da aplicação não é um repositório Git (instalação manual).${WHITE}\n"
+    printf "${WHITE} >> Inicializando Git e alinhando com o repositório remoto (branch: ${repo_branch:-main})...${WHITE}\n"
+    echo
+    if [ "${repo_auth_type}" = "ssh" ]; then
+      if [ ! -f "/home/deploy/.ssh/id_rsa" ]; then
+        printf "${WHITE} >> Deploy Key não encontrada. Configurando...${WHITE}\n"
+        configura_deploy_key_ssh || exit 1
+      fi
+      sudo su - deploy <<INITGIT
+        set -e
+        cd /home/deploy/${empresa}
+        git init
+        git remote add origin "${repo_url}"
+        env GIT_SSH_COMMAND="ssh -i /home/deploy/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" git fetch origin
+        git checkout -B "${repo_branch:-main}" "origin/${repo_branch:-main}"
+INITGIT
+    else
+      sudo su - deploy <<INITGIT
+        set -e
+        cd /home/deploy/${empresa}
+        git init
+        git remote add origin "${repo_url}"
+        git fetch origin
+        git checkout -B "${repo_branch:-main}" "origin/${repo_branch:-main}"
+INITGIT
+    fi
+    chown deploy:deploy -R "/home/deploy/${empresa}"
+    printf "${GREEN} >> Repositório Git inicializado e alinhado com o remoto.${WHITE}\n"
+    echo
+    return 0
   fi
 
   if [ "${repo_auth_type}" = "ssh" ]; then
