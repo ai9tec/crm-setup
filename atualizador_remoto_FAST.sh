@@ -98,8 +98,9 @@ EOF
   printf "${WHITE} >> Atualizando a Aplicação da Empresa ${empresa}... \n"
   sleep 2
 
-  source /home/deploy/${empresa}/frontend/.env
-  frontend_port=${SERVER_PORT:-3000}
+  # Lê apenas SERVER_PORT do .env (evita source: .env pode ter TOKEN etc. que quebram no shell)
+  frontend_port=$(grep -E '^SERVER_PORT=' "/home/deploy/${empresa}/frontend/.env" 2>/dev/null | cut -d '=' -f2- | tr -d '\r"' || true)
+  frontend_port=${frontend_port:-3000}
   sudo su - deploy <<EOF
 printf "${WHITE} >> Atualizando Backend...\n"
 echo
@@ -135,6 +136,14 @@ cd /home/deploy/${empresa}/frontend
 sed -i 's/3000/'"$frontend_port"'/g' server.js
 NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
 sleep 2
+if [ "${instalar_api_oficial}" = "s" ] && [ -d "/home/deploy/${empresa}/api_oficial" ]; then
+  printf "${WHITE} >> Atualizando API Oficial (modo FAST: só build + migrate)...\n"
+  cd /home/deploy/${empresa}/api_oficial
+  npx prisma generate
+  npm run build
+  npx prisma migrate deploy
+  sleep 2
+fi
 pm2 flush
 pm2 reset all
 pm2 start all

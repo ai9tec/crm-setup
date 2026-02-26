@@ -280,8 +280,9 @@ STOPPM2
   printf "${WHITE} >> Atualizando a Aplicação da Empresa ${empresa}... \n"
   sleep 2
 
-  source /home/deploy/${empresa}/frontend/.env 2>/dev/null || true
-  frontend_port=${SERVER_PORT:-3000}
+  # Lê apenas SERVER_PORT do .env (evita source: .env pode ter TOKEN etc. que quebram no shell)
+  frontend_port=$(grep -E '^SERVER_PORT=' "/home/deploy/${empresa}/frontend/.env" 2>/dev/null | cut -d '=' -f2- | tr -d '\r"' || true)
+  frontend_port=${frontend_port:-3000}
   sudo su - deploy <<UPDATEAPP
   # Configura PATH para Node.js e PM2
   if [ -d /usr/local/n/versions/node/20.19.4/bin ]; then
@@ -369,6 +370,32 @@ STOPPM2
   pm2 save
   pm2 startup
 UPDATEAPP
+
+  # Atualizar API Oficial se estiver instalada (atualização completa: npm install + build + migrate)
+  if [ "${instalar_api_oficial}" = "s" ] && [ -d "/home/deploy/${empresa}/api_oficial" ]; then
+    printf "${WHITE} >> Atualizando API Oficial...\n"
+    sleep 2
+    sudo su - deploy <<API_OFICIAL
+  if [ -d /usr/local/n/versions/node/20.19.4/bin ]; then
+    export PATH=/usr/local/n/versions/node/20.19.4/bin:/usr/bin:/usr/local/bin:\$PATH
+  else
+    export PATH=/usr/bin:/usr/local/bin:\$PATH
+  fi
+  cd /home/deploy/${empresa}/api_oficial
+  npm install
+  npx prisma generate
+  npm run build
+  npx prisma migrate deploy
+  pm2 restart ${empresa}-api_oficial
+  pm2 save
+API_OFICIAL
+    if [ $? -ne 0 ]; then
+      printf "${RED} >> Erro ao atualizar API Oficial. Verifique os logs.${WHITE}\n"
+      exit 1
+    fi
+    printf "${GREEN} >> API Oficial atualizada.\n${WHITE}"
+    sleep 2
+  fi
 
   sudo su - root <<EOF
     if systemctl is-active --quiet nginx; then
