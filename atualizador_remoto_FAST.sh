@@ -142,6 +142,7 @@ if [ "${instalar_api_oficial}" = "s" ] && [ -d "/home/deploy/${empresa}/api_ofic
   npx prisma generate
   npm run build
   npx prisma migrate deploy
+  npx prisma generate client
   sleep 2
 fi
 pm2 flush
