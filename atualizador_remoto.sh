@@ -387,7 +387,7 @@ UPDATEAPP
   npm run build
   npx prisma migrate deploy
   npx prisma generate client
-  pm2 restart ${empresa}-api_oficial
+  pm2 restart all
   pm2 save
 API_OFICIAL
     if [ $? -ne 0 ]; then
