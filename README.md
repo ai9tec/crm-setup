@@ -277,7 +277,7 @@ sudo chmod +x atualizador_remoto.sh
 sudo ./atualizador_remoto.sh
 ```
 
-O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios, branch e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação.
+O `atualizador_remoto.sh` usa o arquivo `VARIAVEIS_INSTALACAO` (gerado na primeira instalação) para saber empresa, diretórios, branch e portas. Execute-o **no mesmo diretório** onde está o instalador e onde foi feita a instalação. Opcionalmente, pode-se informar a branch na linha de comando: `sudo ./atualizador_remoto.sh nome_da_branch`; se não for informada, será usada a branch definida no `VARIAVEIS_INSTALACAO` (`repo_branch`).
 
 ### Opção 3: Atualização rápida (atualizador_remoto_FAST.sh)
 
@@ -292,7 +292,7 @@ sudo ./atualizador_remoto_FAST.sh
 **Use o FAST quando:** apenas o código do backend/frontend mudou (correções, textos, configs).  
 **Use o atualizador_remoto.sh quando:** houve alteração em `package.json`, nova versão do Node ou quiser backup do banco antes de atualizar.
 
-O FAST também usa a **branch** definida na instalação (`repo_branch` em `VARIAVEIS_INSTALACAO`).
+O FAST também usa a **branch** definida na instalação (`repo_branch` em `VARIAVEIS_INSTALACAO`). Opcionalmente: `sudo ./atualizador_remoto_FAST.sh nome_da_branch` para atualizar em outra branch.
 
 ### Pré-requisitos para atualizar
 
@@ -359,6 +359,8 @@ Atualização completa do sistema já instalado:
 
 ```bash
 sudo ./atualizador_remoto.sh
+# ou com branch específica:
+sudo ./atualizador_remoto.sh nome_da_branch
 ```
 
 ### atualizador_remoto_FAST.sh
@@ -373,6 +375,8 @@ Use quando não houver mudança em `package.json`. Mais rápido; em caso de dúv
 
 ```bash
 sudo ./atualizador_remoto_FAST.sh
+# ou com branch específica:
+sudo ./atualizador_remoto_FAST.sh nome_da_branch
 ```
 
 ### instalador_apioficial.sh

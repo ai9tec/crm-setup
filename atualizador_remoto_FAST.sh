@@ -25,6 +25,9 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Branch opcional por parâmetro (sobrescreve repo_branch do VARIAVEIS_INSTALACAO)
+BRANCH_PARAM="$1"
+
 # Função para manipular erros e encerrar o script
 trata_erro() {
   printf "${RED}Erro encontrado na etapa $1. Encerrando o script.${WHITE}\n"
@@ -73,6 +76,7 @@ EOF
 baixa_codigo_atualizar() {
   # Carrega variáveis da instalação (empresa, repo_branch, etc.)
   dummy_carregar_variaveis
+  [ -n "$BRANCH_PARAM" ] && repo_branch="$BRANCH_PARAM"
   if [ -z "${empresa}" ]; then
     printf "${RED} >> ERRO: Variável 'empresa' não está definida! Verifique o arquivo VARIAVEIS_INSTALACAO.\n${WHITE}"
     exit 1
