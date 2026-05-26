@@ -16,7 +16,7 @@ git clone https://github.com/ai9tec/crm-setup
 cd crm-setup
 
 # 3. Dar permissões e executar
-sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh
+sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh instalador_transcricao.sh
 sudo ./instalador_single.sh
 ```
 
@@ -39,6 +39,7 @@ O script instala automaticamente:
 ✅ **Backend** - Node.js + TypeScript + Sequelize + PostgreSQL  
 ✅ **Frontend** - React + Material-UI + Build otimizado  
 ✅ **API Oficial** - NestJS + Prisma (WhatsApp Business)  
+✅ **API Transcrição** - Flask + SpeechRecognition (áudio para texto, porta 4002)  
 ✅ **Nginx** - Proxy reverso + SSL/TLS  
 ✅ **PostgreSQL** - Bancos de dados  
 ✅ **Redis** - Cache e filas  

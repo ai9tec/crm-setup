@@ -69,6 +69,17 @@ salvar_variaveis() {
   if [ "${instalar_api_oficial}" == "s" ] && [ -n "${subdominio_oficial}" ]; then
     echo "subdominio_oficial=${subdominio_oficial}" >>$ARQUIVO_VARIAVEIS
   fi
+  echo "instalar_transcricao=${instalar_transcricao}" >>$ARQUIVO_VARIAVEIS
+  if [ -n "${storage_type}" ]; then
+    echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
+  fi
+  if [ "${storage_type}" == "r2" ]; then
+    echo "cf_r2_account_id=${cf_r2_account_id}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_access_key_id=${cf_r2_access_key_id}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_secret_access_key=${cf_r2_secret_access_key}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_bucket=${cf_r2_bucket}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_public_url=${cf_r2_public_url}" >>$ARQUIVO_VARIAVEIS
+  fi
 }
 
 # Carregar variáveis
@@ -325,57 +336,65 @@ instalacao_base() {
     salvar_etapa 15
   fi
   if [ "$etapa" -le "15" ]; then
-    instala_backend_base || trata_erro "instala_backend_base"
+    questoes_storage_base || trata_erro "questoes_storage_base"
     salvar_etapa 16
   fi
   if [ "$etapa" -le "16" ]; then
-    instala_frontend_base || trata_erro "instala_frontend_base"
+    instala_backend_base || trata_erro "instala_backend_base"
     salvar_etapa 17
   fi
   if [ "$etapa" -le "17" ]; then
-    config_cron_base || trata_erro "config_cron_base"
+    instalar_transcricao_integrada || trata_erro "instalar_transcricao_integrada"
     salvar_etapa 18
   fi
   if [ "$etapa" -le "18" ]; then
-    if [ "${proxy}" == "nginx" ]; then
-      config_nginx_base || trata_erro "config_nginx_base"
-      salvar_etapa 19
-    elif [ "${proxy}" == "traefik" ]; then
-      config_traefik_base || trata_erro "config_traefik_base"
-      salvar_etapa 19
-    fi
+    instala_frontend_base || trata_erro "instala_frontend_base"
+    salvar_etapa 19
   fi
   if [ "$etapa" -le "19" ]; then
-    config_latencia_base || trata_erro "config_latencia_base"
+    config_cron_base || trata_erro "config_cron_base"
     salvar_etapa 20
   fi
   if [ "$etapa" -le "20" ]; then
-    verificar_dns_apioficial || trata_erro "verificar_dns_apioficial"
-    salvar_etapa 21
+    if [ "${proxy}" == "nginx" ]; then
+      config_nginx_base || trata_erro "config_nginx_base"
+      salvar_etapa 21
+    elif [ "${proxy}" == "traefik" ]; then
+      config_traefik_base || trata_erro "config_traefik_base"
+      salvar_etapa 21
+    fi
   fi
   if [ "$etapa" -le "21" ]; then
-    configurar_nginx_apioficial || trata_erro "configurar_nginx_apioficial"
+    config_latencia_base || trata_erro "config_latencia_base"
     salvar_etapa 22
   fi
   if [ "$etapa" -le "22" ]; then
-    criar_banco_apioficial || trata_erro "criar_banco_apioficial"
+    verificar_dns_apioficial || trata_erro "verificar_dns_apioficial"
     salvar_etapa 23
   fi
   if [ "$etapa" -le "23" ]; then
-    configurar_env_apioficial || trata_erro "configurar_env_apioficial"
+    configurar_nginx_apioficial || trata_erro "configurar_nginx_apioficial"
     salvar_etapa 24
   fi
   if [ "$etapa" -le "24" ]; then
-    instalar_apioficial || trata_erro "instalar_apioficial"
+    criar_banco_apioficial || trata_erro "criar_banco_apioficial"
     salvar_etapa 25
   fi
   if [ "$etapa" -le "25" ]; then
-    atualizar_env_backend_apioficial || trata_erro "atualizar_env_backend_apioficial"
+    configurar_env_apioficial || trata_erro "configurar_env_apioficial"
     salvar_etapa 26
   fi
   if [ "$etapa" -le "26" ]; then
-    fim_instalacao_base || trata_erro "fim_instalacao_base"
+    instalar_apioficial || trata_erro "instalar_apioficial"
     salvar_etapa 27
+  fi
+  if [ "$etapa" -le "27" ]; then
+    atualizar_env_backend_apioficial || trata_erro "atualizar_env_backend_apioficial"
+    salvar_etapa 28
+  fi
+  if [ "$etapa" -le "28" ]; then
+    fim_instalacao_base || trata_erro "fim_instalacao_base"
+    salvar_etapa 29
   fi
 }
 
@@ -620,6 +639,23 @@ questoes_variaveis_base() {
     instalar_api_oficial="n"
     subdominio_oficial=""
     printf "${YELLOW} >> API Oficial não será instalada.${WHITE}\n"
+    sleep 2
+  fi
+
+  # PERGUNTA SOBRE API DE TRANSCRIÇÃO
+  banner
+  printf "${WHITE} >> Deseja instalar a API de Transcrição de Áudio? (S/N): \n"
+  echo
+  read -p "> " instalar_transcricao
+  instalar_transcricao=$(echo "${instalar_transcricao}" | tr '[:upper:]' '[:lower:]')
+  echo
+
+  if [ "${instalar_transcricao}" == "s" ]; then
+    printf "${GREEN} >> API de Transcrição será instalada (porta 4002, PM2).${WHITE}\n"
+    sleep 2
+  else
+    instalar_transcricao="n"
+    printf "${YELLOW} >> API de Transcrição não será instalada.${WHITE}\n"
     sleep 2
   fi
 }
@@ -1521,6 +1557,104 @@ GITCLONE
   } || trata_erro "baixa_codigo_base"
 }
 
+# Perguntar storage de mídias (local ou Cloudflare R2) antes do backend
+questoes_storage_base() {
+  carregar_variaveis
+
+  if grep -q "^storage_type=" "$ARQUIVO_VARIAVEIS" 2>/dev/null; then
+    printf "${GREEN} >> Storage de mídias já configurado: ${storage_type}${WHITE}\n"
+    sleep 2
+    return 0
+  fi
+
+  banner
+  printf "${WHITE} >> Onde as mídias (áudios, imagens, documentos) serão armazenadas?\n"
+  echo
+  printf "   [${BLUE}1${WHITE}] Local — pasta public/company{id}/ nesta VPS (padrão)\n"
+  printf "   [${BLUE}2${WHITE}] Cloudflare R2 — bucket na nuvem\n"
+  echo
+  read -p "> " opcao_storage
+  echo
+
+  opcao_storage=$(echo "${opcao_storage}" | tr '[:upper:]' '[:lower:]')
+
+  case "${opcao_storage}" in
+    2|r2|cloudflare)
+      storage_type="r2"
+      banner
+      printf "${WHITE} >> Configuração Cloudflare R2\n"
+      printf "${YELLOW} >> Informe os dados do bucket (painel Cloudflare > R2).\n"
+      echo
+
+      printf "${WHITE} >> CF_R2_ACCOUNT_ID (Account ID da conta Cloudflare): \n"
+      read -p "> " cf_r2_account_id
+      echo
+
+      printf "${WHITE} >> CF_R2_ACCESS_KEY_ID (Access Key do token R2): \n"
+      read -p "> " cf_r2_access_key_id
+      echo
+
+      printf "${WHITE} >> CF_R2_SECRET_ACCESS_KEY (Secret Key do token R2): \n"
+      read -s -p "> " cf_r2_secret_access_key
+      echo
+      echo
+
+      printf "${WHITE} >> CF_R2_BUCKET (nome do bucket): \n"
+      read -p "> " cf_r2_bucket
+      echo
+
+      printf "${WHITE} >> CF_R2_PUBLIC_URL (URL pública — Custom Domain ou *.r2.dev): \n"
+      printf "${YELLOW} >> Ex: https://media.seudominio.com.br ou https://pub-xxxx.r2.dev\n"
+      read -p "> " cf_r2_public_url
+      echo
+
+      cf_r2_public_url=$(echo "${cf_r2_public_url}" | sed 's|/*$||')
+
+      while [ -z "${cf_r2_account_id}" ] || [ -z "${cf_r2_access_key_id}" ] || \
+            [ -z "${cf_r2_secret_access_key}" ] || [ -z "${cf_r2_bucket}" ] || \
+            [ -z "${cf_r2_public_url}" ]; do
+        printf "${RED} >> ERRO: Todos os campos R2 são obrigatórios. Preencha novamente.${WHITE}\n"
+        echo
+        printf "${WHITE} >> CF_R2_ACCOUNT_ID: \n"
+        read -p "> " cf_r2_account_id
+        printf "${WHITE} >> CF_R2_ACCESS_KEY_ID: \n"
+        read -p "> " cf_r2_access_key_id
+        printf "${WHITE} >> CF_R2_SECRET_ACCESS_KEY: \n"
+        read -s -p "> " cf_r2_secret_access_key
+        echo
+        printf "${WHITE} >> CF_R2_BUCKET: \n"
+        read -p "> " cf_r2_bucket
+        printf "${WHITE} >> CF_R2_PUBLIC_URL: \n"
+        read -p "> " cf_r2_public_url
+        cf_r2_public_url=$(echo "${cf_r2_public_url}" | sed 's|/*$||')
+        echo
+      done
+
+      printf "${GREEN} >> Storage R2 configurado (bucket: ${cf_r2_bucket}).${WHITE}\n"
+      ;;
+    *)
+      storage_type="local"
+      cf_r2_account_id=""
+      cf_r2_access_key_id=""
+      cf_r2_secret_access_key=""
+      cf_r2_bucket=""
+      cf_r2_public_url=""
+      printf "${GREEN} >> Storage local selecionado (public/company{id}/ na VPS).${WHITE}\n"
+      ;;
+  esac
+
+  echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
+  if [ "${storage_type}" == "r2" ]; then
+    echo "cf_r2_account_id=${cf_r2_account_id}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_access_key_id=${cf_r2_access_key_id}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_secret_access_key=${cf_r2_secret_access_key}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_bucket=${cf_r2_bucket}" >>$ARQUIVO_VARIAVEIS
+    echo "cf_r2_public_url=${cf_r2_public_url}" >>$ARQUIVO_VARIAVEIS
+  fi
+
+  sleep 2
+}
+
 # Instala e configura backend
 instala_backend_base() {
   banner
@@ -1544,6 +1678,14 @@ instala_backend_base() {
     printf "${YELLOW} >> O código precisa ser clonado primeiro. Verifique a etapa anterior.\n${WHITE}"
     exit 1
   fi
+
+  carregar_variaveis
+  storage_type="${storage_type:-local}"
+  cf_r2_account_id="${cf_r2_account_id:-}"
+  cf_r2_access_key_id="${cf_r2_access_key_id:-}"
+  cf_r2_secret_access_key="${cf_r2_secret_access_key:-}"
+  cf_r2_bucket="${cf_r2_bucket:-}"
+  cf_r2_public_url="${cf_r2_public_url:-}"
   
   {
     sleep 2
@@ -1642,7 +1784,15 @@ TOKEN_API_OFICIAL="adminpro"
 OFFICIAL_CAMPAIGN_CONCURRENCY=10  # Processa até 10 campanhas ao mesmo tempo
 
 # API de Transcrição de Audio
-TRANSCRIBE_URL=http://localhost:4002
+TRANSCRIBE_URL=http://127.0.0.1:4002
+
+# Storage de mídias (local ou r2)
+STORAGE_TYPE=${storage_type}
+CF_R2_ACCOUNT_ID=${cf_r2_account_id}
+CF_R2_ACCESS_KEY_ID=${cf_r2_access_key_id}
+CF_R2_SECRET_ACCESS_KEY=${cf_r2_secret_access_key}
+CF_R2_BUCKET=${cf_r2_bucket}
+CF_R2_PUBLIC_URL=${cf_r2_public_url}
 [-]EOF
 EOF
 
@@ -2565,6 +2715,14 @@ fim_instalacao_base() {
   if [ "${instalar_api_oficial}" == "s" ]; then
     printf "   ${WHITE}API Oficial: ${BLUE}https://${subdominio_oficial}\n"
   fi
+  if [ "${instalar_transcricao}" == "s" ]; then
+    printf "   ${WHITE}API Transcrição: ${BLUE}http://127.0.0.1:4002 ${WHITE}(PM2: ${empresa}-api_transcricao)\n"
+  fi
+  if [ "${storage_type}" == "r2" ]; then
+    printf "   ${WHITE}Storage mídias: ${BLUE}Cloudflare R2 ${WHITE}(bucket: ${cf_r2_bucket})\n"
+  else
+    printf "   ${WHITE}Storage mídias: ${BLUE}Local ${WHITE}(public/company{id}/)\n"
+  fi
   echo
   printf "   ${WHITE}Usuário ${BLUE}admin@multi100.com.br\n"
   printf "   ${WHITE}Senha   ${BLUE}adminpro\n"
@@ -2900,19 +3058,29 @@ EOF
   } || trata_erro "otimiza_banco_atualizar"
 }
 
-# Adicionar função para instalar transcrição de áudio nativa
+# Instalar API de Transcrição (fluxo principal ou menu)
+instalar_transcricao_integrada() {
+  if [ "${instalar_transcricao}" != "s" ]; then
+    printf "${YELLOW} >> Pulando API de Transcrição (não selecionada)...${WHITE}\n"
+    return 0
+  fi
+  local script_path="$(pwd)/instalador_transcricao.sh"
+  if [ ! -f "$script_path" ]; then
+    printf "${RED} >> instalador_transcricao.sh não encontrado em: $(pwd)${WHITE}\n"
+    return 1
+  fi
+  chmod +x "$script_path"
+  bash "$script_path"
+}
+
+# Adicionar função para instalar transcrição de áudio nativa (menu)
 instalar_transcricao_audio_nativa() {
   banner
   printf "${WHITE} >> Instalando Transcrição de Áudio Nativa...\n"
   echo
-  local script_path="/home/deploy/${empresa}/api_transcricao/install-python-app.sh"
-  if [ -f "$script_path" ]; then
-    chmod 775 "$script_path"
-    bash "$script_path"
-  else
-    printf "${RED} >> Script não encontrado em: $script_path${WHITE}\n"
-    sleep 2
-  fi
+  carregar_variaveis
+  instalar_transcricao="s"
+  instalar_transcricao_integrada
   printf "${GREEN} >> Processo de instalação da transcrição finalizado. Voltando ao menu...${WHITE}\n"
   sleep 2
 }
