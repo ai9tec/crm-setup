@@ -90,34 +90,55 @@ instalar_ffmpeg_estatico_btbN() {
   return 0
 }
 
+# Garante /usr/bin/ffmpeg funcional (backend, transcrição e PM2 usam PATH padrão)
+sincronizar_ffmpeg_para_system() {
+  local src=""
+
+  if ffmpeg_test_funcional /usr/local/bin/ffmpeg; then
+    src="/usr/local/bin/ffmpeg"
+  elif [ -n "${FFMPEG_PATH}" ] && ffmpeg_test_funcional "${FFMPEG_PATH}"; then
+    src="${FFMPEG_PATH}"
+  else
+    return 0
+  fi
+
+  cp -f "${src}" /usr/bin/ffmpeg
+  if [ -x /usr/local/bin/ffprobe ]; then
+    cp -f /usr/local/bin/ffprobe /usr/bin/ffprobe 2>/dev/null || true
+  elif [ -x "$(dirname "${src}")/ffprobe" ]; then
+    cp -f "$(dirname "${src}")/ffprobe" /usr/bin/ffprobe 2>/dev/null || true
+  fi
+  FFMPEG_PATH="/usr/bin/ffmpeg"
+  export FFMPEG_PATH
+}
+
+finalizar_garantir_ffmpeg() {
+  sincronizar_ffmpeg_para_system
+  printf "${garantir_ffmpeg__GREEN} >> ffmpeg OK: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
+  export FFMPEG_PATH
+  return 0
+}
+
 garantir_ffmpeg() {
   FFMPEG_PATH="${FFMPEG_PATH:-}"
 
   if [ -n "$FFMPEG_PATH" ] && ffmpeg_test_funcional "$FFMPEG_PATH"; then
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg OK: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    export FFMPEG_PATH
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   if ffmpeg_test_funcional /usr/local/bin/ffmpeg; then
     FFMPEG_PATH="/usr/local/bin/ffmpeg"
-    export FFMPEG_PATH
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg OK: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   if ffmpeg_test_funcional /usr/bin/ffmpeg; then
     FFMPEG_PATH="/usr/bin/ffmpeg"
-    export FFMPEG_PATH
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg OK: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   if ffmpeg_test_funcional ffmpeg; then
     FFMPEG_PATH="$(command -v ffmpeg)"
-    export FFMPEG_PATH
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg OK: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   printf "${garantir_ffmpeg__YELLOW} >> ffmpeg quebrado ou ausente. Tentando reparar via apt...${garantir_ffmpeg__WHITE}\n"
@@ -128,15 +149,12 @@ garantir_ffmpeg() {
 
   if ffmpeg_test_funcional /usr/bin/ffmpeg; then
     FFMPEG_PATH="/usr/bin/ffmpeg"
-    export FFMPEG_PATH
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg reparado via apt: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   printf "${garantir_ffmpeg__YELLOW} >> apt não resolveu. Instalando build estático em /usr/local/bin/ffmpeg ...${garantir_ffmpeg__WHITE}\n"
   if instalar_ffmpeg_estatico_btbN && ffmpeg_test_funcional "$FFMPEG_PATH"; then
-    printf "${garantir_ffmpeg__GREEN} >> ffmpeg estático instalado: ${FFMPEG_PATH}${garantir_ffmpeg__WHITE}\n"
-    return 0
+    return finalizar_garantir_ffmpeg
   fi
 
   printf "${garantir_ffmpeg__RED} >> ERRO: Não foi possível instalar um ffmpeg funcional.${garantir_ffmpeg__WHITE}\n"

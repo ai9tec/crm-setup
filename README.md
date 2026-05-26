@@ -46,6 +46,21 @@ O script instala automaticamente:
 ✅ **PM2** - Gerenciador de processos  
 ✅ **Certbot** - Certificados SSL automáticos  
 
+### Transcrição de áudio e storage (perguntas no instalador)
+
+Na instalação nova, o `instalador_single.sh` pergunta:
+
+- **API de Transcrição (S/N)** — responda **S** para subir `api_transcricao` no PM2 (porta 4002). O `.env` do backend recebe `TRANSCRIBE_URL=http://127.0.0.1:4002`.
+- **Storage de mídias** — **Local** ou **Cloudflare R2** (credenciais `CF_R2_*` no `.env` do backend).
+
+O **ffmpeg** é validado/reparado automaticamente (`lib/garantir_ffmpeg.sh`) na etapa inicial e na instalação da transcrição.
+
+Se a transcrição falhar após instalar:
+
+```bash
+sudo ./tools/reparar_ffmpeg.sh NOME_EMPRESA
+```
+
 ## 📝 Durante a Instalação
 
 O instalador solicitará:

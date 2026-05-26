@@ -880,62 +880,33 @@ EOF
   } || trata_erro "instala_puppeteer_base"
 }
 
-# Instala FFMPEG
+# Instala FFMPEG (usa lib/garantir_ffmpeg.sh — evita libavdevice.so quebrado)
 instala_ffmpeg_base() {
   banner
-  printf "${WHITE} >> Instalando FFMPEG 6...\n"
+  printf "${WHITE} >> Instalando FFMPEG...\n"
   echo
 
-  if [ -f "${FFMPEG}" ]; then
-    printf " >> FFMPEG já foi instalado. Continuando a instalação...\n"
+  local setup_dir
+  setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # shellcheck source=lib/garantir_ffmpeg.sh
+  source "${setup_dir}/lib/garantir_ffmpeg.sh"
+
+  if [ -f "${FFMPEG}" ] && ffmpeg_test_funcional /usr/bin/ffmpeg; then
+    printf "${GREEN} >> FFMPEG já instalado e funcional. Continuando...${WHITE}\n"
     echo
-  else
-
-    sleep 2
-
-    {
-      sudo apt install ffmpeg -y
-      # Dynamic fetch of latest FFmpeg build from BtbN/FFmpeg-Builds
-      download_ok=false
-      asset_url=""
-      if [ "${ARCH}" = "x86_64" ]; then
-        asset_url=$(curl -sL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest | grep -oP '"browser_download_url":\s*"\K[^"]+' | grep -E 'linux64-gpl.*\.tar\.xz$' | head -n1)
-      elif [ "${ARCH}" = "aarch64" ]; then
-        asset_url=$(curl -sL https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest | grep -oP '"browser_download_url":\s*"\K[^"]+' | grep -E 'linuxarm64-gpl.*\.tar\.xz$' | head -n1)
-      else
-        echo "Arquitetura não suportada: ${ARCH}"
-      fi
-
-      if [ -n "${asset_url}" ]; then
-        FFMPEG_FILE="${asset_url##*/}"
-        wget -q "${asset_url}" -O "${FFMPEG_FILE}"
-        if [ $? -eq 0 ]; then
-          mkdir -p ${FFMPEG_DIR}
-          tar -xvf ${FFMPEG_FILE} -C ${FFMPEG_DIR} >/dev/null 2>&1
-          extracted_dir=$(tar -tf ${FFMPEG_FILE} | head -1 | cut -d/ -f1)
-          if [ -n "${extracted_dir}" ] && [ -d "${FFMPEG_DIR}/${extracted_dir}/bin" ]; then
-            sudo cp ${FFMPEG_DIR}/${extracted_dir}/bin/ffmpeg /usr/bin/ >/dev/null 2>&1
-            sudo cp ${FFMPEG_DIR}/${extracted_dir}/bin/ffprobe /usr/bin/ >/dev/null 2>&1
-            sudo cp ${FFMPEG_DIR}/${extracted_dir}/bin/ffplay /usr/bin/ >/dev/null 2>&1
-            rm -rf ${FFMPEG_DIR} >/dev/null 2>&1
-            rm -f ${FFMPEG_FILE} >/dev/null 2>&1
-            download_ok=true
-          fi
-        fi
-      fi
-
-      if [ "${download_ok}" != true ]; then
-        printf "${YELLOW} >> Não foi possível baixar o FFmpeg dos builds oficiais. Usando pacote da distribuição...${WHITE}\n"
-      fi
-
-      export PATH=/usr/bin:${PATH}
-      echo 'export PATH=/usr/bin:${PATH}' >>~/.bashrc
-      source ~/.bashrc >/dev/null 2>&1
-      if command -v ffmpeg >/dev/null 2>&1; then
-        touch "${FFMPEG}"
-      fi
-    } || trata_erro "instala_ffmpeg_base"
+    return 0
   fi
+
+  [ -f "${FFMPEG}" ] && rm -f "${FFMPEG}"
+
+  {
+    sleep 2
+    garantir_ffmpeg || exit 1
+    export PATH=/usr/bin:/usr/local/bin:${PATH}
+    grep -q 'export PATH=/usr/bin' ~/.bashrc 2>/dev/null || echo 'export PATH=/usr/bin:/usr/local/bin:${PATH}' >>~/.bashrc
+    touch "${FFMPEG}"
+    sleep 2
+  } || trata_erro "instala_ffmpeg_base"
 }
 
 # Instala Postgres
@@ -3064,9 +3035,11 @@ instalar_transcricao_integrada() {
     printf "${YELLOW} >> Pulando API de Transcrição (não selecionada)...${WHITE}\n"
     return 0
   fi
-  local script_path="$(pwd)/instalador_transcricao.sh"
+  local setup_dir
+  setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local script_path="${setup_dir}/instalador_transcricao.sh"
   if [ ! -f "$script_path" ]; then
-    printf "${RED} >> instalador_transcricao.sh não encontrado em: $(pwd)${WHITE}\n"
+    printf "${RED} >> instalador_transcricao.sh não encontrado em: ${setup_dir}${WHITE}\n"
     return 1
   fi
   chmod +x "$script_path"
