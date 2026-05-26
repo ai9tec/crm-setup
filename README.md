@@ -16,7 +16,7 @@ git clone https://github.com/ai9tec/crm-setup
 cd crm-setup
 
 # 3. Dar permissões e executar
-sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh instalador_transcricao.sh
+sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh instalador_transcricao.sh tools/reparar_ffmpeg.sh
 sudo ./instalador_single.sh
 ```
 

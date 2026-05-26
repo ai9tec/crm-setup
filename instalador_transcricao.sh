@@ -44,6 +44,10 @@ carregar_variaveis() {
   empresa="${empresa:-multiflow}"
 }
 
+SCRIPT_DIR_TRANSCRICAO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/garantir_ffmpeg.sh
+source "${SCRIPT_DIR_TRANSCRICAO}/lib/garantir_ffmpeg.sh"
+
 instalar_deps_sistema() {
   banner
   printf "${WHITE} >> Instalando dependências do sistema (ffmpeg, Python)...\n"
@@ -51,12 +55,7 @@ instalar_deps_sistema() {
 
   apt-get update -qq
 
-  if ffmpeg -version &>/dev/null 2>&1; then
-    printf "${GREEN} >> ffmpeg já instalado${WHITE}\n"
-  else
-    printf "${WHITE} >> Instalando ffmpeg...${WHITE}\n"
-    apt-get install -y ffmpeg
-  fi
+  garantir_ffmpeg || trata_erro "garantir_ffmpeg"
 
   apt-get install -y python3 python3-pip python3-venv flac
 
@@ -86,6 +85,7 @@ configurar_env_transcricao() {
 
   sudo -u deploy cat > "${transcricao_dir}/.env" <<EOF
 PORT=${default_transcricao_port}
+FFMPEG_PATH=${FFMPEG_PATH:-/usr/local/bin/ffmpeg}
 EOF
 
   printf "${GREEN} >> .env configurado (PORT=${default_transcricao_port}).${WHITE}\n"
@@ -126,7 +126,7 @@ pip install -r requirements.txt
 
 printf "${WHITE} >> Configurando PM2 (${pm2_name})...${WHITE}\n"
 pm2 delete ${pm2_name} 2>/dev/null || true
-pm2 start main.py --name ${pm2_name} --interpreter ./venv/bin/python3
+FFMPEG_PATH=${FFMPEG_PATH:-/usr/local/bin/ffmpeg} pm2 start main.py --name ${pm2_name} --interpreter ./venv/bin/python3
 pm2 save
 
 printf "${GREEN} >> API de Transcrição iniciada no PM2.${WHITE}\n"
