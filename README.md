@@ -156,8 +156,9 @@ A branch informada será usada no clone e em todas as atualizações. Se deixar 
 
 ### Acessar o Sistema
 - **Frontend:** https://app.seudominio.com.br
-- **Usuário padrão:** admin@equipechat.com
-- **Senha padrão:** adminpro
+- **Usuário padrão:** `admin@equipechat.com` (definido em `lib/credenciais_padrao.sh` e no seed do backend)
+- **Senha padrão:** `adminpro`
+- A **Senha Master** informada na instalação também funciona como senha de login
 
 ⚠️ **IMPORTANTE:** Altere as credenciais padrão após primeiro acesso!
 

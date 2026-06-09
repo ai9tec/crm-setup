@@ -17,6 +17,9 @@ ip_atual=$(curl -s http://checkip.amazonaws.com)
 jwt_secret=$(openssl rand -base64 32)
 jwt_refresh_secret=$(openssl rand -base64 32)
 default_apioficial_port=6000
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/credenciais_padrao.sh
+source "${SCRIPT_DIR}/lib/credenciais_padrao.sh"
 
 if [ "$EUID" -ne 0 ]; then
   echo
@@ -772,6 +775,10 @@ dados_instalacao_base() {
   else
     printf "   ${WHITE}Storage de Mídias: ----->> ${YELLOW}Local (public/company{id}/)\n"
   fi
+  echo
+  printf "   ${WHITE}Login CRM (padrão): ---->> ${YELLOW}${DEFAULT_ADMIN_EMAIL}\n"
+  printf "   ${WHITE}Senha CRM (padrão): ---->> ${YELLOW}${DEFAULT_ADMIN_PASSWORD}\n"
+  printf "   ${YELLOW}   (a Senha Master acima também funciona como senha de login)${WHITE}\n"
 }
 
 # Confirma os dados de instalação
@@ -1790,7 +1797,7 @@ MAIL_PORT="465"
 # WhatsApp Oficial
 USE_WHATSAPP_OFICIAL=true
 # URL_API_OFICIAL=https://SubDominioDaOficial.SEUDOMINIO.com.br
-TOKEN_API_OFICIAL="adminpro"
+TOKEN_API_OFICIAL="${DEFAULT_API_TOKEN}"
 OFFICIAL_CAMPAIGN_CONCURRENCY=10  # Processa até 10 campanhas ao mesmo tempo
 
 # API de Transcrição de Audio
@@ -2341,7 +2348,7 @@ DATABASE_PASSWORD=${senha_deploy}
 DATABASE_NAME=oficialseparado
 
 # Configurações do MultiFlow Backend (URL Completa com https://)
-TOKEN_ADMIN=adminpro
+TOKEN_ADMIN=${DEFAULT_API_TOKEN}
 URL_BACKEND_MULT100=${backend_url_full}
 JWT_REFRESH_SECRET=${jwt_refresh_secret_backend}
 
@@ -2352,8 +2359,8 @@ URL_API_OFICIAL=${subdominio_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado
-EMAIL_ADMIN=admin@equipechat.com
-PASSWORD_ADMIN=adminpro
+EMAIL_ADMIN=${DEFAULT_ADMIN_EMAIL}
+PASSWORD_ADMIN=${DEFAULT_ADMIN_PASSWORD}
 EOF
 
       printf "${GREEN} >> Arquivo .env da API Oficial configurado com sucesso!${WHITE}\n"
@@ -2734,8 +2741,7 @@ fim_instalacao_base() {
     printf "   ${WHITE}Storage mídias: ${BLUE}Local ${WHITE}(public/company{id}/)\n"
   fi
   echo
-  printf "   ${WHITE}Usuário ${BLUE}admin@equipechat.com\n"
-  printf "   ${WHITE}Senha   ${BLUE}adminpro\n"
+  exibir_credenciais_crm
   echo
   printf "${WHITE}>> Aperte qualquer tecla para voltar ao menu principal ou CTRL+C Para finalizar esse script\n"
   read -p ""

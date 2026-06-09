@@ -12,6 +12,9 @@ UBUNTU_VERSION=$(lsb_release -sr)
 ARQUIVO_VARIAVEIS="VARIAVEIS_INSTALACAO"
 ip_atual=$(curl -s http://checkip.amazonaws.com)
 default_apioficial_port=6000
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/credenciais_padrao.sh
+source "${SCRIPT_DIR}/lib/credenciais_padrao.sh"
 
 if [ "$EUID" -ne 0 ]; then
 echo
@@ -288,7 +291,7 @@ DATABASE_PASSWORD=${senha_deploy}
 DATABASE_NAME=oficialseparado
 
 # Configurações do MultiFlow Backend (URL Completa com https://)
-TOKEN_ADMIN=adminpro
+TOKEN_ADMIN=${DEFAULT_API_TOKEN}
 URL_BACKEND_MULT100=${backend_url_full}
 JWT_REFRESH_SECRET=${jwt_refresh_secret_backend}
 
@@ -300,8 +303,8 @@ URL_API_OFICIAL=${subdominio_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado
-EMAIL_ADMIN=admin@equipechat.com
-PASSWORD_ADMIN=adminpro
+EMAIL_ADMIN=${DEFAULT_ADMIN_EMAIL}
+PASSWORD_ADMIN=${DEFAULT_ADMIN_PASSWORD}
 EOF
 
     printf "${GREEN} >> Arquivo .env da API Oficial configurado com sucesso!${WHITE}\n"
@@ -455,6 +458,8 @@ printf "${GREEN} >> Instalação da API Oficial concluída com sucesso!${WHITE}\
 echo
 printf "${WHITE} >> API Oficial disponível em: ${YELLOW}https://${subdominio_oficial}${WHITE}\n"
 printf "${WHITE} >> Porta da API Oficial: ${YELLOW}${default_apioficial_port}${WHITE}\n"
+echo
+exibir_credenciais_crm
 echo
 sleep 5
 }
