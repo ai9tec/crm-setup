@@ -2352,7 +2352,7 @@ URL_API_OFICIAL=${subdominio_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado
-EMAIL_ADMIN=admin@multi100.com.br
+EMAIL_ADMIN=admin@equipechat.com
 PASSWORD_ADMIN=adminpro
 EOF
 
@@ -2734,7 +2734,7 @@ fim_instalacao_base() {
     printf "   ${WHITE}Storage mídias: ${BLUE}Local ${WHITE}(public/company{id}/)\n"
   fi
   echo
-  printf "   ${WHITE}Usuário ${BLUE}admin@multi100.com.br\n"
+  printf "   ${WHITE}Usuário ${BLUE}admin@equipechat.com\n"
   printf "   ${WHITE}Senha   ${BLUE}adminpro\n"
   echo
   printf "${WHITE}>> Aperte qualquer tecla para voltar ao menu principal ou CTRL+C Para finalizar esse script\n"

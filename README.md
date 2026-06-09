@@ -156,7 +156,7 @@ A branch informada será usada no clone e em todas as atualizações. Se deixar 
 
 ### Acessar o Sistema
 - **Frontend:** https://app.seudominio.com.br
-- **Usuário padrão:** admin@multi100.com.br
+- **Usuário padrão:** admin@equipechat.com
 - **Senha padrão:** adminpro
 
 ⚠️ **IMPORTANTE:** Altere as credenciais padrão após primeiro acesso!

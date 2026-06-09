@@ -300,7 +300,7 @@ URL_API_OFICIAL=${subdominio_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado
-EMAIL_ADMIN=admin@multi100.com.br
+EMAIL_ADMIN=admin@equipechat.com
 PASSWORD_ADMIN=adminpro
 EOF
 
