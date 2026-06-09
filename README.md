@@ -48,10 +48,12 @@ O script instala automaticamente:
 
 ### Transcrição de áudio e storage (perguntas no instalador)
 
-Na instalação nova, o `instalador_single.sh` pergunta:
+Na instalação nova, o `instalador_single.sh` pergunta no início (junto com API Oficial e Transcrição):
 
 - **API de Transcrição (S/N)** — responda **S** para subir `api_transcricao` no PM2 (porta 4002). O `.env` do backend recebe `TRANSCRIBE_URL=http://127.0.0.1:4002`.
-- **Storage de mídias** — **Local** ou **Cloudflare R2** (credenciais `CF_R2_*` no `.env` do backend).
+- **Storage de mídias** — **Local** ou **Cloudflare R2** (credenciais `CF_R2_*` no `.env` do backend). A escolha aparece no resumo de confirmação antes de iniciar as etapas automáticas.
+
+> Se a instalação foi **retomada** de uma etapa antiga sem essa pergunta, o instalador solicita o storage novamente antes de configurar o backend.
 
 O **ffmpeg** é validado/reparado automaticamente (`lib/garantir_ffmpeg.sh`) na etapa inicial e na instalação da transcrição.
 

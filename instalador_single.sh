@@ -70,9 +70,8 @@ salvar_variaveis() {
     echo "subdominio_oficial=${subdominio_oficial}" >>$ARQUIVO_VARIAVEIS
   fi
   echo "instalar_transcricao=${instalar_transcricao}" >>$ARQUIVO_VARIAVEIS
-  if [ -n "${storage_type}" ]; then
-    echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
-  fi
+  storage_type="${storage_type:-local}"
+  echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
   if [ "${storage_type}" == "r2" ]; then
     echo "cf_r2_account_id=${cf_r2_account_id}" >>$ARQUIVO_VARIAVEIS
     echo "cf_r2_access_key_id=${cf_r2_access_key_id}" >>$ARQUIVO_VARIAVEIS
@@ -658,6 +657,8 @@ questoes_variaveis_base() {
     printf "${YELLOW} >> API de Transcrição não será instalada.${WHITE}\n"
     sleep 2
   fi
+
+  perguntar_storage_midias
 }
 
 # Define proxy usado
@@ -756,6 +757,21 @@ dados_instalacao_base() {
   printf "   ${WHITE}Proxy Usado: ----------->> ${YELLOW}${proxy}\n"
   printf "   ${WHITE}Porta Backend: --------->> ${YELLOW}${backend_port}\n"
   printf "   ${WHITE}Porta Frontend: -------->> ${YELLOW}${frontend_port}\n"
+  if [ "${instalar_api_oficial}" == "s" ]; then
+    printf "   ${WHITE}API Oficial: ----------->> ${YELLOW}Sim (${subdominio_oficial})\n"
+  else
+    printf "   ${WHITE}API Oficial: ----------->> ${YELLOW}Não\n"
+  fi
+  if [ "${instalar_transcricao}" == "s" ]; then
+    printf "   ${WHITE}API Transcrição: ------->> ${YELLOW}Sim (porta 4002)\n"
+  else
+    printf "   ${WHITE}API Transcrição: ------->> ${YELLOW}Não\n"
+  fi
+  if [ "${storage_type}" == "r2" ]; then
+    printf "   ${WHITE}Storage de Mídias: ----->> ${YELLOW}Cloudflare R2 (${cf_r2_bucket})\n"
+  else
+    printf "   ${WHITE}Storage de Mídias: ----->> ${YELLOW}Local (public/company{id}/)\n"
+  fi
 }
 
 # Confirma os dados de instalação
@@ -1528,16 +1544,8 @@ GITCLONE
   } || trata_erro "baixa_codigo_base"
 }
 
-# Perguntar storage de mídias (local ou Cloudflare R2) antes do backend
-questoes_storage_base() {
-  carregar_variaveis
-
-  if grep -q "^storage_type=" "$ARQUIVO_VARIAVEIS" 2>/dev/null; then
-    printf "${GREEN} >> Storage de mídias já configurado: ${storage_type}${WHITE}\n"
-    sleep 2
-    return 0
-  fi
-
+# Pergunta onde armazenar mídias (local ou Cloudflare R2)
+perguntar_storage_midias() {
   banner
   printf "${WHITE} >> Onde as mídias (áudios, imagens, documentos) serão armazenadas?\n"
   echo
@@ -1614,6 +1622,16 @@ questoes_storage_base() {
       ;;
   esac
 
+  sleep 2
+}
+
+persistir_variaveis_storage() {
+  storage_type="${storage_type:-local}"
+
+  if [ -f "$ARQUIVO_VARIAVEIS" ] && grep -q "^storage_type=" "$ARQUIVO_VARIAVEIS" 2>/dev/null; then
+    return 0
+  fi
+
   echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
   if [ "${storage_type}" == "r2" ]; then
     echo "cf_r2_account_id=${cf_r2_account_id}" >>$ARQUIVO_VARIAVEIS
@@ -1622,8 +1640,20 @@ questoes_storage_base() {
     echo "cf_r2_bucket=${cf_r2_bucket}" >>$ARQUIVO_VARIAVEIS
     echo "cf_r2_public_url=${cf_r2_public_url}" >>$ARQUIVO_VARIAVEIS
   fi
+}
 
-  sleep 2
+# Fallback: garante storage configurado antes do backend (retomadas de instalação antigas)
+questoes_storage_base() {
+  carregar_variaveis
+
+  if grep -q "^storage_type=" "$ARQUIVO_VARIAVEIS" 2>/dev/null; then
+    printf "${GREEN} >> Storage de mídias já configurado: ${storage_type}${WHITE}\n"
+    sleep 2
+    return 0
+  fi
+
+  perguntar_storage_midias
+  persistir_variaveis_storage
 }
 
 # Instala e configura backend
@@ -1651,6 +1681,15 @@ instala_backend_base() {
   fi
 
   carregar_variaveis
+
+  if [ -z "${storage_type}" ] && ! grep -q "^storage_type=" "$ARQUIVO_VARIAVEIS" 2>/dev/null; then
+    printf "${YELLOW} >> Storage de mídias não configurado. Configure agora antes do backend.${WHITE}\n"
+    sleep 2
+    perguntar_storage_midias
+    persistir_variaveis_storage
+    carregar_variaveis
+  fi
+
   storage_type="${storage_type:-local}"
   cf_r2_account_id="${cf_r2_account_id:-}"
   cf_r2_access_key_id="${cf_r2_access_key_id:-}"
