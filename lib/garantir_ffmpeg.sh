@@ -123,22 +123,26 @@ garantir_ffmpeg() {
   FFMPEG_PATH="${FFMPEG_PATH:-}"
 
   if [ -n "$FFMPEG_PATH" ] && ffmpeg_test_funcional "$FFMPEG_PATH"; then
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   if ffmpeg_test_funcional /usr/local/bin/ffmpeg; then
     FFMPEG_PATH="/usr/local/bin/ffmpeg"
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   if ffmpeg_test_funcional /usr/bin/ffmpeg; then
     FFMPEG_PATH="/usr/bin/ffmpeg"
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   if ffmpeg_test_funcional ffmpeg; then
     FFMPEG_PATH="$(command -v ffmpeg)"
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   printf "${garantir_ffmpeg__YELLOW} >> ffmpeg quebrado ou ausente. Tentando reparar via apt...${garantir_ffmpeg__WHITE}\n"
@@ -149,12 +153,14 @@ garantir_ffmpeg() {
 
   if ffmpeg_test_funcional /usr/bin/ffmpeg; then
     FFMPEG_PATH="/usr/bin/ffmpeg"
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   printf "${garantir_ffmpeg__YELLOW} >> apt não resolveu. Instalando build estático em /usr/local/bin/ffmpeg ...${garantir_ffmpeg__WHITE}\n"
   if instalar_ffmpeg_estatico_btbN && ffmpeg_test_funcional "$FFMPEG_PATH"; then
-    return finalizar_garantir_ffmpeg
+    finalizar_garantir_ffmpeg
+    return $?
   fi
 
   printf "${garantir_ffmpeg__RED} >> ERRO: Não foi possível instalar um ffmpeg funcional.${garantir_ffmpeg__WHITE}\n"
