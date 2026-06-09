@@ -361,7 +361,7 @@ STOPPM2
   npm prune --force > /dev/null 2>&1
   rm -rf node_modules 2>/dev/null || true
   rm -f package-lock.json 2>/dev/null || true
-  npm install --force
+  npm install --legacy-peer-deps
   
   if [ -f "server.js" ]; then
     sed -i 's/3000/'"$frontend_port"'/g' server.js

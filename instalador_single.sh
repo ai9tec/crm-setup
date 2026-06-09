@@ -2008,8 +2008,8 @@ instala_frontend_base() {
     exit 1
   fi
   
-  npm install --force
-  npm install express dotenv --save
+  npm install --legacy-peer-deps
+  npm install express dotenv --save --legacy-peer-deps
   npx browserslist@latest --update-db
 FRONTENDINSTALL
 
@@ -2996,8 +2996,8 @@ STOPPM2
   fi
   
   npm prune --force > /dev/null 2>&1
-  npm install --force
-  npm install express dotenv --save
+  npm install --legacy-peer-deps
+  npm install express dotenv --save --legacy-peer-deps
   
   # Criar server.js se não existir
   if [ ! -f "server.js" ]; then
