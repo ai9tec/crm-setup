@@ -141,7 +141,16 @@ A branch informada será usada no clone e em todas as atualizações. Se deixar 
 
 >> Digite o FACEBOOK_APP_SECRET caso tenha:
 > (deixe vazio se não tiver)
+
+>> Usar os mesmos valores de FACEBOOK_APP_ID/SECRET para META_APP_ID/SECRET (fluxo MetaCoex)? (S/N):
+> S (recomendado — mesmo app Meta)
+
+>> (se N) Digite o META_APP_ID e META_APP_SECRET para o Embedded Signup
 ```
+
+O instalador grava no `.env` do backend:
+- `META_APP_ID` / `META_APP_SECRET` — troca do authorization code em `/meta-onboard`
+- `META_REDIRECT_URI` — gerado automaticamente como `https://{subdominio_frontend}/meta-onboard`
 
 ### 7. Proxy e Portas
 ```

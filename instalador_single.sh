@@ -62,6 +62,8 @@ salvar_variaveis() {
   echo "numero_suporte=${numero_suporte}" >>$ARQUIVO_VARIAVEIS
   echo "facebook_app_id=${facebook_app_id}" >>$ARQUIVO_VARIAVEIS
   echo "facebook_app_secret=${facebook_app_secret}" >>$ARQUIVO_VARIAVEIS
+  echo "meta_app_id=${meta_app_id}" >>$ARQUIVO_VARIAVEIS
+  echo "meta_app_secret=${meta_app_secret}" >>$ARQUIVO_VARIAVEIS
   echo "repo_url=${repo_url}" >>$ARQUIVO_VARIAVEIS
   echo "repo_branch=${repo_branch}" >>$ARQUIVO_VARIAVEIS
   echo "repo_auth_type=${repo_auth_type}" >>$ARQUIVO_VARIAVEIS
@@ -563,6 +565,28 @@ questoes_variaveis_base() {
   echo
   read -p "> " facebook_app_secret
   echo
+  # META (Embedded Signup / MetaCoex) — reutiliza FACEBOOK_* ou credenciais próprias
+  banner
+  printf "${WHITE} >> Usar os mesmos valores de FACEBOOK_APP_ID/SECRET para META_APP_ID/SECRET (fluxo MetaCoex)? (S/N): \n"
+  echo
+  read -p "> " usar_meta_mesmo_app
+  echo
+  usar_meta_mesmo_app=$(echo "${usar_meta_mesmo_app}" | tr '[:lower:]' '[:upper:]')
+  if [ -z "${usar_meta_mesmo_app}" ] || [ "${usar_meta_mesmo_app}" == "S" ]; then
+    meta_app_id="${facebook_app_id}"
+    meta_app_secret="${facebook_app_secret}"
+  else
+    banner
+    printf "${WHITE} >> Digite o META_APP_ID (Embedded Signup / MetaCoex): \n"
+    echo
+    read -p "> " meta_app_id
+    echo
+    banner
+    printf "${WHITE} >> Digite o META_APP_SECRET (Embedded Signup / MetaCoex): \n"
+    echo
+    read -p "> " meta_app_secret
+    echo
+  fi
   # DEFINE TIPO DE AUTENTICAÇÃO DO REPOSITÓRIO
   banner
   printf "${WHITE} >> Escolha o tipo de autenticação do repositório: \n"
@@ -754,6 +778,12 @@ dados_instalacao_base() {
   printf "   ${WHITE}Numero de Suporte: ----->> ${YELLOW}${numero_suporte}\n"
   printf "   ${WHITE}FACEBOOK_APP_ID: ------->> ${YELLOW}${facebook_app_id}\n"
   printf "   ${WHITE}FACEBOOK_APP_SECRET: --->> ${YELLOW}${facebook_app_secret}\n"
+  printf "   ${WHITE}META_APP_ID: ----------->> ${YELLOW}${meta_app_id:-${facebook_app_id}}\n"
+  printf "   ${WHITE}META_APP_SECRET: ------>> ${YELLOW}${meta_app_secret:-${facebook_app_secret}}\n"
+  local frontend_url_resumo="${subdominio_frontend}"
+  frontend_url_resumo=$(echo "${frontend_url_resumo/https:\/\//}")
+  frontend_url_resumo=${frontend_url_resumo%%/*}
+  printf "   ${WHITE}META_REDIRECT_URI: ----->> ${YELLOW}https://${frontend_url_resumo}/meta-onboard\n"
   printf "   ${WHITE}Tipo de Autenticação: -->> ${YELLOW}${auth_display}\n"
   printf "   ${WHITE}URL do Repositório: ---->> ${YELLOW}${repo_url}\n"
   printf "   ${WHITE}Branch: ---------------->> ${YELLOW}${repo_branch:-main}\n"
@@ -1712,6 +1742,9 @@ instala_backend_base() {
     subdominio_frontend=$(echo "${subdominio_frontend/https:\/\//}")
     subdominio_frontend=${subdominio_frontend%%/*}
     subdominio_frontend=https://${subdominio_frontend}
+    meta_app_id="${meta_app_id:-${facebook_app_id}}"
+    meta_app_secret="${meta_app_secret:-${facebook_app_secret}}"
+    meta_redirect_uri="${subdominio_frontend}/meta-onboard"
     # subdominio_perfex=$(echo "${subdominio_perfex/https:\/\//}")
     # subdominio_perfex=${subdominio_perfex%%/*}
     # subdominio_perfex=https://${subdominio_perfex}
@@ -1760,6 +1793,11 @@ MASTER_KEY=${senha_master}
 VERIFY_TOKEN=whaticket
 FACEBOOK_APP_ID=${facebook_app_id}
 FACEBOOK_APP_SECRET=${facebook_app_secret}
+
+# Meta Embedded Signup (MetaCoex /meta-onboard)
+META_APP_ID=${meta_app_id}
+META_APP_SECRET=${meta_app_secret}
+META_REDIRECT_URI=${meta_redirect_uri}
 
 #METODOS DE PAGAMENTO
 
