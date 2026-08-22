@@ -327,15 +327,19 @@ STOPPM2
     exit 1
   fi
   
-  npm prune --force > /dev/null 2>&1
+  set -e
   export PUPPETEER_SKIP_DOWNLOAD=true
-  rm -rf node_modules 2>/dev/null || true
-  rm -f package-lock.json 2>/dev/null || true
+  # Preserva package-lock.json: apagá-lo faz o npm re-resolver deps transitivas
+  # (ex.: Baileys → cacheable → @cacheable/memory@^2.2.0) e quebra o install.
   rm -rf dist 2>/dev/null || true
-  npm install --force
-  npm install puppeteer-core --force
-  npm i glob
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    rm -rf node_modules 2>/dev/null || true
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   npm run build
+  test -f dist/server.js || { echo "ERRO: dist/server.js não gerado após o build"; exit 1; }
   sleep 2
   printf "${WHITE} >> Atualizando Banco da empresa ${empresa}...\n"
   echo
@@ -358,10 +362,13 @@ STOPPM2
     exit 1
   fi
   
-  npm prune --force > /dev/null 2>&1
-  rm -rf node_modules 2>/dev/null || true
-  rm -f package-lock.json 2>/dev/null || true
-  npm install --legacy-peer-deps
+  set -e
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    rm -rf node_modules 2>/dev/null || true
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   
   if [ -f "server.js" ]; then
     sed -i 's/3000/'"$frontend_port"'/g' server.js
@@ -386,8 +393,13 @@ UPDATEAPP
   else
     export PATH=/usr/bin:/usr/local/bin:\$PATH
   fi
+  set -e
   cd /home/deploy/${empresa}/api_oficial
-  npm install
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   npx prisma generate
   npm run build
   npx prisma migrate deploy

@@ -333,8 +333,12 @@ fi
 
 cd ${api_oficial_dir}
 
-printf "${WHITE} >> Instalando dependências (npm install)...\n"
-npm install --force
+printf "${WHITE} >> Instalando dependências (npm ci/install)...\n"
+if [ -f package-lock.json ]; then
+  npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+else
+  npm install --legacy-peer-deps --no-audit --no-fund
+fi
 
 printf "${WHITE} >> Gerando Prisma (npx prisma generate)...\n"
 npx prisma generate

@@ -116,15 +116,20 @@ git fetch origin
 git reset --hard origin/${repo_branch:-main}
 
 cd /home/deploy/${empresa}/backend
+# Modo FAST: NÃO reinstala node_modules e NÃO apaga package-lock.json.
+# Use o atualizador standard quando houver mudança de dependências (ex.: bump Baileys).
 # npm prune --force > /dev/null 2>&1
 # export PUPPETEER_SKIP_DOWNLOAD=true
-# rm -r node_modules
-# rm package-lock.json
-# npm install --force
-# npm install puppeteer-core --force
-# npm i glob
-# npm install jimp@^1.6.0
+# rm -rf node_modules
+# # NÃO apagar package-lock.json
+# if [ -f package-lock.json ]; then
+#   npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+# else
+#   npm install --legacy-peer-deps --no-audit --no-fund
+# fi
+set -e
 npm run build
+test -f dist/server.js || { echo "ERRO: dist/server.js não gerado após o build"; exit 1; }
 sleep 2
 printf "${WHITE} >> Atualizando Banco da empresa ${empresa}...\n"
 echo
@@ -136,18 +141,19 @@ echo
 sleep 2
 cd /home/deploy/${empresa}/frontend
 # npm prune --force > /dev/null 2>&1
-# npm install --force
+# npm install --legacy-peer-deps
 sed -i 's/3000/'"$frontend_port"'/g' server.js
 NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
 sleep 2
 if [ "${instalar_api_oficial}" = "s" ] && [ -d "/home/deploy/${empresa}/api_oficial" ]; then
-  printf "${WHITE} >> Atualizando API Oficial (modo FAST: só build + migrate)...\n"
-  cd /home/deploy/${empresa}/api_oficial
-  npx prisma generate
-  npm run build
-  npx prisma migrate deploy
-  npx prisma generate client
-  sleep 2
+ printf "${WHITE} >> Atualizando API Oficial (modo FAST: só build + migrate)...\n"
+ set -e
+ cd /home/deploy/${empresa}/api_oficial
+ npx prisma generate
+ npm run build
+ npx prisma migrate deploy
+ npx prisma generate client
+ sleep 2
 fi
 pm2 flush
 pm2 reset all

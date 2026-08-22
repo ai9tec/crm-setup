@@ -1898,12 +1898,17 @@ EOF
   fi
   
   export PUPPETEER_SKIP_DOWNLOAD=true
-  rm -rf node_modules 2>/dev/null || true
-  rm -f package-lock.json 2>/dev/null || true
-  npm install --force
-  npm install puppeteer-core --force
-  npm i glob
+  set -e
+  # Preserva package-lock.json para instalação reprodutível (não usar --force)
+  rm -rf dist 2>/dev/null || true
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    rm -rf node_modules 2>/dev/null || true
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   npm run build
+  test -f dist/server.js || { echo "ERRO: dist/server.js não gerado após o build"; exit 1; }
 BACKENDINSTALL
 
     sleep 2
@@ -2430,8 +2435,13 @@ fi
 
 cd ${api_oficial_dir}
 
-printf "${WHITE} >> Instalando dependências (npm install)...\n"
-npm install --force
+printf "${WHITE} >> Instalando dependências (npm ci/install)...\n"
+set -e
+if [ -f package-lock.json ]; then
+  npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+else
+  npm install --legacy-peer-deps --no-audit --no-fund
+fi
 
 printf "${WHITE} >> Gerando Prisma (npx prisma generate)...\n"
 npx prisma generate
@@ -3009,14 +3019,17 @@ STOPPM2
     exit 1
   fi
   
-  npm prune --force > /dev/null 2>&1
+  set -e
   export PUPPETEER_SKIP_DOWNLOAD=true
-  rm -rf node_modules 2>/dev/null || true
-  rm -f package-lock.json 2>/dev/null || true
-  npm install --force
-  npm install puppeteer-core --force
-  npm i glob
+  rm -rf dist 2>/dev/null || true
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    rm -rf node_modules 2>/dev/null || true
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   npm run build
+  test -f dist/server.js || { echo "ERRO: dist/server.js não gerado após o build"; exit 1; }
   sleep 2
   printf "${WHITE} >> Atualizando Banco...\n"
   echo
@@ -3039,8 +3052,13 @@ STOPPM2
     exit 1
   fi
   
-  npm prune --force > /dev/null 2>&1
-  npm install --legacy-peer-deps
+  set -e
+  if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+  else
+    rm -rf node_modules 2>/dev/null || true
+    npm install --legacy-peer-deps --no-audit --no-fund
+  fi
   npm install express dotenv --save --legacy-peer-deps
   
   # Criar server.js se não existir

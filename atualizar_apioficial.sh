@@ -97,7 +97,11 @@ git pull
 cd /home/deploy/${empresa}/api_oficial
 
 printf "${WHITE} >> Instalando dependências atualizadas...\n"
-npm install
+if [ -f package-lock.json ]; then
+  npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+else
+  npm install --legacy-peer-deps --no-audit --no-fund
+fi
 
 printf "${WHITE} >> Gerando Prisma...\n"
 npx prisma generate
