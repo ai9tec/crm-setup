@@ -144,6 +144,7 @@ cd /home/deploy/${empresa}/frontend
 # npm install --legacy-peer-deps
 sed -i 's/3000/'"$frontend_port"'/g' server.js
 NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
+test -f build/index.html || { echo "ERRO: build/index.html não gerado após o build do frontend"; exit 1; }
 sleep 2
 if [ "${instalar_api_oficial}" = "s" ] && [ -d "/home/deploy/${empresa}/api_oficial" ]; then
  printf "${WHITE} >> Atualizando API Oficial (modo FAST: só build + migrate)...\n"

@@ -333,7 +333,11 @@ STOPPM2
   # (ex.: Baileys → cacheable → @cacheable/memory@^2.2.0) e quebra o install.
   rm -rf dist 2>/dev/null || true
   if [ -f package-lock.json ]; then
-    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+    if ! npm ci --legacy-peer-deps --no-audit --no-fund; then
+      echo ">> package-lock.json do backend desatualizado; reinstalando do zero..."
+      rm -rf node_modules package-lock.json
+      npm install --legacy-peer-deps --no-audit --no-fund
+    fi
   else
     rm -rf node_modules 2>/dev/null || true
     npm install --legacy-peer-deps --no-audit --no-fund
@@ -363,8 +367,14 @@ STOPPM2
   fi
   
   set -e
+  # package-lock.json não é versionado no repo; lock antigo na VPS quebra npm ci
+  # e o fallback sem limpar node_modules deixa dependências inconsistentes (ex.: postcss).
   if [ -f package-lock.json ]; then
-    npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
+    if ! npm ci --legacy-peer-deps --no-audit --no-fund; then
+      echo ">> package-lock.json do frontend desatualizado; reinstalando do zero..."
+      rm -rf node_modules package-lock.json
+      npm install --legacy-peer-deps --no-audit --no-fund
+    fi
   else
     rm -rf node_modules 2>/dev/null || true
     npm install --legacy-peer-deps --no-audit --no-fund
@@ -375,6 +385,7 @@ STOPPM2
   fi
   
   NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" npm run build
+  test -f build/index.html || { echo "ERRO: build/index.html não gerado após o build do frontend"; exit 1; }
   sleep 2
   pm2 flush
   pm2 reset all
