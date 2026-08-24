@@ -2059,7 +2059,8 @@ instala_frontend_base() {
   fi
   
   npm install --legacy-peer-deps
-  npm install express dotenv --save --legacy-peer-deps
+  # Express 5 rejeita a rota SPA "/*"; pinamos v4 para compatibilidade com server.js
+  npm install express@4 dotenv --save --legacy-peer-deps
   npx browserslist@latest --update-db
 FRONTENDINSTALL
 
@@ -2123,7 +2124,7 @@ app.get("/*", function (req, res) {
     res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
-const port = process.env.PORT || 3000;
+const port = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
 
 app.listen(port, () => {
     console.log(\`Server is running on port \${port}\`);
@@ -3059,7 +3060,8 @@ STOPPM2
     rm -rf node_modules 2>/dev/null || true
     npm install --legacy-peer-deps --no-audit --no-fund
   fi
-  npm install express dotenv --save --legacy-peer-deps
+  # Express 5 rejeita a rota SPA "/*"; pinamos v4 para compatibilidade com server.js
+  npm install express@4 dotenv --save --legacy-peer-deps
   
   # Criar server.js se não existir
   if [ ! -f "server.js" ]; then
@@ -3078,7 +3080,7 @@ app.get("/*", function (req, res) {
     res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
-const port = process.env.PORT || 3000;
+const port = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
 
 app.listen(port, () => {
     console.log(\`Server is running on port \${port}\`);

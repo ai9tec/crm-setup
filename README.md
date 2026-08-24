@@ -348,6 +348,10 @@ Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy
 - 40GB espaço em disco
 - Acesso root ou sudo
 
+### Rede / firewall (obrigatório antes do SSL)
+- Portas **80** e **443** liberadas no firewall do provedor (além do UFW na VPS).
+- **Oracle Cloud:** na Security List (ou NSG) da subnet/VNIC, criar Ingress TCP `0.0.0.0/0` → portas `80` e `443`. Sem isso o site fica inacessível e o Certbot falha.
+
 ### DNS
 - Domínio/subdomínio apontando para o IP do servidor
 - Exemplo:
