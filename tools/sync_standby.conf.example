@@ -1,0 +1,18 @@
+# Copie para a VPS de PRODUÇÃO: /home/deploy/sync_standby.conf
+# chmod 600 && chown deploy:deploy
+
+# Nome do standby na Oracle: app | magistral | beauty
+STANDBY_NAME=app
+
+# Pasta local nesta produção (origem do rsync)
+LOCAL_ROOT=/home/deploy/chat
+
+# Destino na Oracle
+CONTENCAO_HOST=IP_OU_HOSTNAME_ORACLE
+CONTENCAO_USER=deploy
+CONTENCAO_SSH_PORT=22
+CONTENCAO_SSH_KEY=/home/deploy/.ssh/id_ed25519_standby
+REMOTE_ROOT=/home/deploy/app
+
+# Path do crm-setup NA ORACLE (para rodar o overlay após o sync)
+REMOTE_SETUP_DIR=/home/deploy/crm-setup

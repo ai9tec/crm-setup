@@ -188,15 +188,63 @@ pm2 restart backend
 pm2 restart frontend
 ```
 
-### Backup Manual
+### Standby DR (plano A — rsync + overlay)
+
+Sincroniza a pasta da produção para a Oracle e aplica portas/DB/Redis do standby (`app` / `magistral` / `beauty`).
+
+**1) Na Oracle (uma vez por standby):**
 
 ```bash
-# Backend
-PGPASSWORD=sua_senha pg_dump -U empresa -h localhost empresa > backup.sql
+# tools acessíveis pelo user deploy
+sudo mkdir -p /home/deploy/crm-setup
+sudo rsync -a /home/ubuntu/crm-setup/tools/ /home/deploy/crm-setup/tools/
+sudo chown -R deploy:deploy /home/deploy/crm-setup
+sudo chmod +x /home/deploy/crm-setup/tools/*.sh
 
-# API Oficial
-PGPASSWORD=sua_senha pg_dump -U empresa -h localhost oficialseparado > backup_api.sql
+# DBs (exemplo app) + secret do overlay
+sudo -u postgres psql -c "CREATE ROLE app LOGIN PASSWORD 'SENHA' SUPERUSER;"  # se não existir
+sudo -u postgres psql -c "CREATE DATABASE app OWNER app;"
+sudo -u postgres psql -c "CREATE DATABASE oficialseparado_app OWNER app;"
+
+sudo mkdir -p /home/deploy/standby-overlays
+sudo tee /home/deploy/standby-overlays/app.secret >/dev/null <<'EOF'
+DB_PASS=SENHA
+EOF
+sudo chown deploy:deploy /home/deploy/standby-overlays/app.secret
+sudo chmod 600 /home/deploy/standby-overlays/app.secret
 ```
+
+**2) Em cada produção — chave SSH e config:**
+
+```bash
+sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519_standby -N "" -C "standby-rsync"
+sudo -u deploy cat /home/deploy/.ssh/id_ed25519_standby.pub
+# cole em /home/deploy/.ssh/authorized_keys na Oracle
+
+sudo cp /path/crm-setup/tools/sync_standby.conf.example /home/deploy/sync_standby.conf
+# edite: STANDBY_NAME, LOCAL_ROOT, CONTENCAO_HOST, REMOTE_ROOT, REMOTE_SETUP_DIR=/home/deploy/crm-setup
+sudo chown deploy:deploy /home/deploy/sync_standby.conf
+sudo chmod 600 /home/deploy/sync_standby.conf
+```
+
+Mapeamento:
+
+| Produção LOCAL_ROOT | STANDBY_NAME | REMOTE_ROOT |
+|---------------------|--------------|-------------|
+| `/home/deploy/chat` | `app` | `/home/deploy/app` |
+| `/home/deploy/ai9` (Magistral) | `magistral` | `/home/deploy/magistral` |
+| `/home/deploy/ai9` (Beauty) | `beauty` | `/home/deploy/beauty` |
+
+**3) Sync manual e cron (ex.: a cada 30 min):**
+
+```bash
+sudo -u deploy /home/deploy/crm-setup/tools/sync_standby.sh
+# ou path onde estiver o script na produção
+
+echo '*/30 * * * * deploy /home/deploy/crm-setup/tools/sync_standby.sh >>/var/log/crm-sync-standby.log 2>&1' | sudo tee /etc/cron.d/crm-sync-standby
+```
+
+Após o primeiro rsync: na Oracle, `npm ci` + build nos standbys (PM2 parado). Syncs seguintes atualizam código/`.env`; rebuild só quando mudar `package-lock`.
 
 ## 💡 Exemplos de Uso
 
