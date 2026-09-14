@@ -198,49 +198,6 @@ PGPASSWORD=sua_senha pg_dump -U empresa -h localhost empresa > backup.sql
 PGPASSWORD=sua_senha pg_dump -U empresa -h localhost oficialseparado > backup_api.sql
 ```
 
-### Backup offsite (VPS de contenção)
-
-Pipeline diário: dump Postgres (+ `oficialseparado`) + `.env` + `sessions/` → rsync para a VPS de contenção. Mídias no **R2** não entram no pacote.
-
-**1) Na contenção (uma vez):**
-
-```bash
-cd /root/crm-setup   # ou onde estiver o clone
-git pull
-sudo chmod +x tools/setup_cofre_backup.sh tools/backup_diario.sh tools/promote_from_backup.sh
-sudo ./tools/setup_cofre_backup.sh
-```
-
-**2) Em cada produção — chave SSH + config:**
-
-```bash
-sudo -u deploy ssh-keygen -t ed25519 -f /home/deploy/.ssh/id_ed25519_offsite -N "" -C "backup-offsite"
-sudo -u deploy cat /home/deploy/.ssh/id_ed25519_offsite.pub
-# cole a pública no authorized_keys do deploy na contenção
-
-sudo cp tools/backup_offsite.conf.example /home/deploy/backup_offsite.conf
-sudo nano /home/deploy/backup_offsite.conf   # CONTENCAO_HOST, EMPRESA, etc.
-sudo chown deploy:deploy /home/deploy/backup_offsite.conf
-sudo chmod 600 /home/deploy/backup_offsite.conf
-```
-
-**3) Teste manual e cron (03:00):**
-
-```bash
-sudo ./tools/backup_diario.sh
-
-# cron (ajuste o path do crm-setup)
-echo '0 3 * * * root /root/crm-setup/tools/backup_diario.sh >>/var/log/crm-backup-diario.log 2>&1' | sudo tee -a /etc/crontab
-```
-
-**4) Promote (crash) na contenção:**
-
-```bash
-sudo ./tools/promote_from_backup.sh --slug SLUG_DA_PRODUCAO --stamp latest --dry-run
-sudo ./tools/promote_from_backup.sh --slug SLUG_DA_PRODUCAO --stamp latest
-# depois: DNS da produção → IP da contenção + certbot
-```
-
 ## 💡 Exemplos de Uso
 
 ### Exemplo 1: Instalação com Repositório Público
