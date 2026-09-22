@@ -275,6 +275,13 @@ echo
     fi
 
     local api_oficial_dir="/home/deploy/${empresa}/api_oficial"
+
+    # Preferência: VARIAVEIS_INSTALACAO → backend .env (META_APP_ID / FACEBOOK_APP_ID)
+    local meta_app_id_backend
+    local facebook_app_id_backend
+    meta_app_id_backend=$(grep "^META_APP_ID=" "${backend_env_path}" 2>/dev/null | cut -d '=' -f2-)
+    facebook_app_id_backend=$(grep "^FACEBOOK_APP_ID=" "${backend_env_path}" 2>/dev/null | cut -d '=' -f2-)
+    local meta_app_id_oficial="${meta_app_id:-${meta_app_id_backend:-${facebook_app_id:-${facebook_app_id_backend}}}}"
     
     # Ajusta permissões do diretório antes de criar o .env
     mkdir -p "${api_oficial_dir}"
@@ -300,6 +307,9 @@ REDIS_URI=redis://:${senha_deploy}@127.0.0.1:6379
 PORT=${default_apioficial_port}
 # URL_API_OFICIAL deve ser a URL limpa (sem https://)
 URL_API_OFICIAL=${subdominio_oficial}
+
+# Meta / WhatsApp Business (Resumable Upload de mídia em templates)
+META_APP_ID=${meta_app_id_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado

@@ -152,6 +152,9 @@ O instalador grava no `.env` do backend:
 - `META_APP_ID` / `META_APP_SECRET` — troca do authorization code em `/meta-onboard`
 - `META_REDIRECT_URI` — gerado automaticamente como `https://{subdominio_frontend}/meta-onboard`
 
+Também grava no `.env` da **API Oficial**:
+- `META_APP_ID` — necessário para criar templates com header IMAGE/VIDEO/DOCUMENT (Resumable Upload na Meta); usa o mesmo valor informado acima (`meta_app_id` ou, se vazio, `facebook_app_id`)
+
 ### 7. Proxy e Portas
 ```
 >> Instalar usando Nginx ou Traefik?
