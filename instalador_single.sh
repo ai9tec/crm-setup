@@ -2381,6 +2381,9 @@ configurar_env_apioficial() {
       mkdir -p "${api_oficial_dir}"
       chown -R deploy:deploy "${api_oficial_dir}"
       
+      # App ID Meta: templates IMAGE/VIDEO/DOCUMENT usam Resumable Upload na api_oficial
+      local meta_app_id_oficial="${meta_app_id:-${facebook_app_id}}"
+
       # Cria o arquivo .env
       sudo -u deploy cat > "${api_oficial_dir}/.env" <<EOF
 # Configurações de acesso ao Banco de Dados (Postgres)
@@ -2400,6 +2403,9 @@ JWT_REFRESH_SECRET=${jwt_refresh_secret_backend}
 REDIS_URI=redis://:${senha_deploy}@127.0.0.1:6379
 PORT=${default_apioficial_port}
 URL_API_OFICIAL=${subdominio_oficial}
+
+# Meta / WhatsApp Business (Resumable Upload de mídia em templates)
+META_APP_ID=${meta_app_id_oficial}
 
 # Configurações de Usuário Inicial
 NAME_ADMIN=SetupAutomatizado
