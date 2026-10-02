@@ -2061,7 +2061,8 @@ instala_frontend_base() {
   npm install --legacy-peer-deps
   # Express 5 rejeita a rota SPA "/*"; pinamos v4 para compatibilidade com server.js
   npm install express@4 dotenv --save --legacy-peer-deps
-  npx browserslist@latest --update-db
+  # Opcional: atualiza caniuse-lite. Não deve abortar a instalação (ex.: lockfile residual).
+  npx update-browserslist-db@latest || true
 FRONTENDINSTALL
 
     sleep 2
