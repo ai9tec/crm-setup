@@ -16,7 +16,7 @@ git clone https://github.com/ai9tec/crm-setup
 cd crm-setup
 
 # 3. Dar permissões e executar
-sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh instalador_transcricao.sh tools/reparar_ffmpeg.sh
+sudo chmod +x instalador_single.sh atualizador_remoto.sh atualizador_remoto_FAST.sh instalador_apioficial.sh instalador_transcricao.sh instalador_wacalls_chat.sh tools/reparar_ffmpeg.sh
 sudo ./instalador_single.sh
 ```
 
@@ -40,22 +40,25 @@ O script instala automaticamente:
 ✅ **Frontend** - React + Material-UI + Build otimizado  
 ✅ **API Oficial** - NestJS + Prisma (WhatsApp Business)  
 ✅ **API Transcrição** - Flask + SpeechRecognition (áudio para texto, porta 4002)  
+✅ **WaCalls Chat** - Go + React / whatsmeow (WhatsApp Plus, porta 8081, systemd)  
 ✅ **Nginx** - Proxy reverso + SSL/TLS  
 ✅ **PostgreSQL** - Bancos de dados  
 ✅ **Redis** - Cache e filas  
 ✅ **PM2** - Gerenciador de processos  
 ✅ **Certbot** - Certificados SSL automáticos  
 
-### Transcrição de áudio e storage (perguntas no instalador)
+### Transcrição, WaCalls e storage (perguntas no instalador)
 
-Na instalação nova, o `instalador_single.sh` pergunta no início (junto com API Oficial e Transcrição):
+Na instalação nova, o `instalador_single.sh` pergunta no início (junto com API Oficial):
 
 - **API de Transcrição (S/N)** — responda **S** para subir `api_transcricao` no PM2 (porta 4002). O `.env` do backend recebe `TRANSCRIBE_URL=http://127.0.0.1:4002`.
+- **WaCalls Chat / WhatsApp Plus (S/N)** — responda **S** para compilar `wacalls-chat`, subir systemd `${empresa}-wacalls-chat` na porta **8081** e gravar `WACALLS_CHAT_URL` / `EMAIL` / `PASSWORD` no `.env` do backend.
 - **Storage de mídias** — **Local** ou **Cloudflare R2** (credenciais `CF_R2_*` no `.env` do backend). A escolha aparece no resumo de confirmação antes de iniciar as etapas automáticas.
 
 > Se a instalação foi **retomada** de uma etapa antiga sem essa pergunta, o instalador solicita o storage novamente antes de configurar o backend.
 
-O **ffmpeg** é validado/reparado automaticamente (`lib/garantir_ffmpeg.sh`) na etapa inicial e na instalação da transcrição.
+O **ffmpeg** é validado/reparado automaticamente (`lib/garantir_ffmpeg.sh`) na etapa inicial e na instalação da transcrição.  
+O **Go 1.26+** é instalado automaticamente (`lib/garantir_golang.sh`) na instalação do WaCalls Chat.
 
 Se a transcrição falhar após instalar:
 
@@ -63,6 +66,25 @@ Se a transcrição falhar após instalar:
 sudo ./tools/reparar_ffmpeg.sh NOME_EMPRESA
 ```
 
+### WaCalls Chat em VPS já instalada
+
+Menu do `instalador_single.sh` → opção **6**, ou direto:
+
+```bash
+cd /root/crm-setup
+git pull
+chmod +x instalador_wacalls_chat.sh
+# O código do CRM precisa ter a pasta wacalls-chat (git pull no app)
+sudo EMPRESA=NOME_EMPRESA ./instalador_wacalls_chat.sh
+```
+
+Rebuild em atualizações (também chamado pelos atualizadores full/FAST quando o serviço já existe ou `instalar_wacalls_chat=s`):
+
+```bash
+sudo EMPRESA=NOME_EMPRESA ./instalador_wacalls_chat.sh --rebuild-only
+```
+
+Credenciais padrão do painel WaCalls: `wacalls@admin.com` / `admin` (salvas em `/root/NOME_EMPRESA-wacalls-credenciais.txt`).
 ## 📝 Durante a Instalação
 
 O instalador solicitará:
@@ -431,6 +453,18 @@ Instalação completa do zero:
 sudo ./instalador_single.sh
 ```
 
+### instalador_wacalls_chat.sh
+Instala ou faz rebuild do microserviço WaCalls Chat (WhatsApp Plus):
+- Instala Go 1.26+ se necessário
+- Compila frontend React + binário `wacalls-server`
+- Cria systemd `${empresa}-wacalls-chat` (porta 8081)
+- Configura `WACALLS_CHAT_*` no `.env` do backend e reinicia o PM2
+
+```bash
+sudo EMPRESA=nome_empresa ./instalador_wacalls_chat.sh
+sudo EMPRESA=nome_empresa ./instalador_wacalls_chat.sh --rebuild-only
+```
+
 ### atualizador_remoto.sh
 Atualização completa do sistema já instalado:
 - Faz backup do banco de dados
@@ -439,6 +473,7 @@ Atualização completa do sistema já instalado:
 - Recompila backend e frontend
 - Executa migrations
 - Reinicia serviços
+- Se WaCalls Chat estiver instalado (`instalar_wacalls_chat=s` ou unit systemd), faz rebuild do serviço
 
 ```bash
 sudo ./atualizador_remoto.sh
@@ -453,6 +488,7 @@ Atualização **rápida** (sem reinstalar dependências):
 - Apenas **build** do backend e frontend (não reinstala `node_modules`)
 - Executa migrations
 - Reinicia PM2 e Nginx
+- Rebuild do WaCalls Chat quando já instalado (mesmo critério do atualizador full)
 
 Use quando não houver mudança em `package.json`. Mais rápido; em caso de dúvida, use `atualizador_remoto.sh`.
 
