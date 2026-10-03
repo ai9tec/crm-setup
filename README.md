@@ -400,8 +400,8 @@ Se algo falhar, o backup do banco (se tiver sido feito) estará em `/home/deploy
 - Acesso root ou sudo
 
 ### Rede / firewall (obrigatório antes do SSL)
-- Portas **80** e **443** liberadas no firewall do provedor (além do UFW na VPS).
-- **Oracle Cloud:** na Security List (ou NSG) da subnet/VNIC, criar Ingress TCP `0.0.0.0/0` → portas `80` e `443`. Sem isso o site fica inacessível e o Certbot falha.
+- Portas **80** e **443** liberadas no firewall do provedor (além do UFW/`iptables` na VPS).
+- **Oracle Cloud:** na Security List (ou NSG) da subnet/VNIC, criar Ingress TCP `0.0.0.0/0` → portas `80` e `443`. O instalador também libera 80/443 no `iptables` da VPS (imagens Oracle costumam rejeitar tudo exceto SSH mesmo com Security List aberta). Sem a regra no provedor **e** no SO, o site fica inacessível e o Certbot falha.
 
 ### DNS
 - Domínio/subdomínio apontando para o IP do servidor

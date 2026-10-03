@@ -874,28 +874,30 @@ config_firewall_base() {
   printf "${WHITE} >> Configurando o firewall Portas 80 e 443...\n"
   echo
   {
-    if [ "${ARCH}" = "x86_64" ]; then
-      sudo su - root <<EOF >/dev/null 2>&1
-  ufw allow 80/tcp && ufw allow 22/tcp && ufw allow 443/tcp
-EOF
-      sleep 2
+    # UFW (quando ativo). Em imagens Oracle Ubuntu o UFW costuma estar inactive e o
+    # iptables padrão só libera SSH — sem ACCEPT em 80/443 o Certbot falha.
+    sudo ufw allow 22/tcp >/dev/null 2>&1 || true
+    sudo ufw allow 80/tcp >/dev/null 2>&1 || true
+    sudo ufw allow 443/tcp >/dev/null 2>&1 || true
 
-    elif [ "${ARCH}" = "aarch64" ]; then
-      sudo su - root <<EOF >/dev/null 2>&1
-  sudo iptables -F &&
-  sudo iptables -A INPUT -i lo -j ACCEPT &&
-  sudo iptables -A OUTPUT -o lo -j ACCEPT &&
-  sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT &&
-  sudo iptables -A INPUT -p udp --dport 80 -j ACCEPT &&
-  sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT &&
-  sudo iptables -A INPUT -p udp --dport 443 -j ACCEPT &&
-  sudo service netfilter-persistent save
+    # Libera HTTP/HTTPS no iptables (idempotente) e persiste as regras
+    sudo su - root <<'EOF'
+set -e
+for port in 80 443; do
+  if ! iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null; then
+    # -I coloca antes do REJECT final típico das imagens Oracle
+    iptables -I INPUT -p tcp --dport "$port" -j ACCEPT
+  fi
+done
+if command -v netfilter-persistent >/dev/null 2>&1; then
+  netfilter-persistent save || true
+elif [ -d /etc/iptables ]; then
+  iptables-save > /etc/iptables/rules.v4
+elif command -v service >/dev/null 2>&1; then
+  service netfilter-persistent save 2>/dev/null || true
+fi
 EOF
-      sleep 2
-
-    else
-      echo "Arquitetura não suportada."
-    fi
+    sleep 2
   } || trata_erro "config_firewall_base"
 }
 
