@@ -260,6 +260,55 @@ EOF
   sleep 1
 }
 
+# Garante admin no SQLite mesmo se o seed Go faliar (ex.: senha < 8 chars
+# em binários antigos). Idempotente: upsert por e-mail.
+seed_admin_sql() {
+  banner
+  printf "${WHITE} >> Garantindo admin no banco SQLite...\n"
+  echo
+
+  local dir name db_file hash id now i
+  dir="$(app_dir)"
+  name="$(service_name)"
+  db_file="${dir}/wacalls.db"
+
+  command -v sqlite3 >/dev/null 2>&1 || apt-get install -y sqlite3 >/dev/null 2>&1
+  command -v htpasswd >/dev/null 2>&1 || apt-get install -y apache2-utils >/dev/null 2>&1
+
+  i=0
+  while [ ! -f "${db_file}" ] && [ "$i" -lt 30 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+  if [ ! -f "${db_file}" ]; then
+    printf "${RED} >> ERRO: ${db_file} não foi criado pelo serviço.${WHITE}\n"
+    return 1
+  fi
+
+  hash=$(htpasswd -nbBC 12 "" "${wacalls_admin_password}" 2>/dev/null | tr -d ':\n' | sed 's|^\$2y\$|\$2a\$|')
+  if [ -z "${hash}" ]; then
+    printf "${RED} >> ERRO: falha ao gerar hash bcrypt do admin.${WHITE}\n"
+    return 1
+  fi
+
+  id=$(openssl rand -hex 16)
+  now=$(date +%s)
+
+  systemctl stop "${name}" 2>/dev/null || true
+  sqlite3 "${db_file}" <<SQL
+INSERT INTO users (id, email, password_hash, created_at, company_name, cpf, active, display_name)
+VALUES ('${id}', '${wacalls_admin_email}', '${hash}', ${now}, 'WaCalls', '', 1, 'Administrador')
+ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, active=1;
+INSERT OR IGNORE INTO user_roles (user_id, role)
+SELECT id, 'admin' FROM users WHERE email='${wacalls_admin_email}';
+SQL
+  systemctl start "${name}" 2>/dev/null || true
+  sleep 2
+
+  printf "${GREEN} >> Admin ${wacalls_admin_email} garantido no SQLite.${WHITE}\n"
+  sleep 1
+}
+
 validar_servico() {
   banner
   printf "${WHITE} >> Validando wacalls-chat...\n"
@@ -270,30 +319,37 @@ validar_servico() {
   max_tentativas=15
   tentativa=0
 
+  local login_ok="n"
   while [ "$tentativa" -lt "$max_tentativas" ]; do
-    if curl -sf -o /dev/null -w "%{http_code}" \
+    code=$(curl -s -o /tmp/wacalls-login-check.json -w "%{http_code}" \
       -X POST "http://127.0.0.1:${port}/api/auth/login" \
       -H "Content-Type: application/json" \
       -d "{\"email\":\"${wacalls_admin_email}\",\"password\":\"${wacalls_admin_password}\"}" \
-      | grep -Eq '200|401|400'; then
-      # 200 = login ok; 401/400 = API no ar (credenciais podem diferir em reinstall)
-      printf "${GREEN} >> API respondendo em http://127.0.0.1:${port}${WHITE}\n"
+      2>/dev/null || echo "000")
+    if [ "$code" = "200" ]; then
+      login_ok="s"
+      printf "${GREEN} >> Login admin OK em http://127.0.0.1:${port}${WHITE}\n"
       sleep 1
       return 0
     fi
-    # fallback: SPA
-    if curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
-      printf "${GREEN} >> Frontend respondendo em http://127.0.0.1:${port}/${WHITE}\n"
-      sleep 1
-      return 0
+    # API no ar mas credenciais faliaram — em instalação nova isso é erro
+    if [ "$code" = "401" ] || [ "$code" = "400" ]; then
+      printf "${YELLOW} >> API respondeu ${code} no login; aguardando seed do admin...${WHITE}\n"
     fi
     tentativa=$((tentativa + 1))
     sleep 2
   done
 
-  printf "${RED} >> ERRO: wacalls-chat não respondeu após ${max_tentativas} tentativas.${WHITE}\n"
-  printf "${YELLOW} >> Verifique: journalctl -u $(service_name) -n 80 --no-pager${WHITE}\n"
-  exit 1
+  if [ "$login_ok" != "s" ]; then
+    printf "${RED} >> ERRO: login admin faliou (email=${wacalls_admin_email}).${WHITE}\n"
+    printf "${YELLOW} >> Verifique: journalctl -u $(service_name) -n 80 --no-pager${WHITE}\n"
+    printf "${YELLOW} >> Dica: senha do seed precisa ser aceita pelo Signup; confira seed admin failed nos logs.${WHITE}\n"
+    # fallback: SPA no ar ainda ajuda diagnóstico, mas não mascara falha de auth
+    if curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
+      printf "${YELLOW} >> Frontend responde, porém o admin NÃO autenticou — corrija antes de usar o QR.${WHITE}\n"
+    fi
+    exit 1
+  fi
 }
 
 atualizar_env_backend() {
@@ -405,6 +461,7 @@ main() {
     fi
     build_wacalls || trata_erro "build_wacalls"
     systemctl restart "$(service_name)" || trata_erro "restart_wacalls"
+    seed_admin_sql || trata_erro "seed_admin_sql"
     validar_servico || trata_erro "validar_servico"
     printf "${GREEN} >> Rebuild do wacalls-chat concluído.${WHITE}\n"
     exit 0
@@ -413,6 +470,7 @@ main() {
   configurar_env_wacalls || trata_erro "configurar_env_wacalls"
   build_wacalls || trata_erro "build_wacalls"
   configurar_systemd || trata_erro "configurar_systemd"
+  seed_admin_sql || trata_erro "seed_admin_sql"
   validar_servico || trata_erro "validar_servico"
   atualizar_env_backend || trata_erro "atualizar_env_backend"
   reiniciar_backend || trata_erro "reiniciar_backend"
