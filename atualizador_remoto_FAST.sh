@@ -163,6 +163,26 @@ pm2 save
 pm2 startup
 EOF
 
+  # WaCalls Chat: rebuild fora do bloco deploy (precisa root + Go + systemd)
+  if { [ "${instalar_wacalls_chat}" = "s" ] || [ -f "/etc/systemd/system/${empresa}-wacalls-chat.service" ]; } \
+    && [ -d "/home/deploy/${empresa}/wacalls-chat" ]; then
+    printf "${WHITE} >> Atualizando WaCalls Chat (modo FAST: rebuild)...\n"
+    sleep 1
+    setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    wacalls_script="${setup_dir}/instalador_wacalls_chat.sh"
+    if [ -f "${wacalls_script}" ]; then
+      chmod +x "${wacalls_script}"
+      EMPRESA="${empresa}" bash "${wacalls_script}" --rebuild-only || {
+        printf "${RED} >> Erro ao atualizar WaCalls Chat. Verifique: journalctl -u ${empresa}-wacalls-chat${WHITE}\n"
+        exit 1
+      }
+      printf "${GREEN} >> WaCalls Chat atualizado.\n${WHITE}"
+    else
+      printf "${YELLOW} >> instalador_wacalls_chat.sh não encontrado; pulando WaCalls.${WHITE}\n"
+    fi
+    sleep 1
+  fi
+
   sudo su - root <<EOF
     if systemctl is-active --quiet nginx; then
       sudo systemctl restart nginx
