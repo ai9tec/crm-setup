@@ -162,6 +162,11 @@ pm2 start all
 pm2 save
 pm2 startup
 EOF
+  app_rc=$?
+  if [ "${app_rc}" -ne 0 ]; then
+    printf "${RED} >> Falha no build do backend ou do frontend (código ${app_rc}). Deploy interrompido.${WHITE}\n"
+    exit "${app_rc}"
+  fi
 
   sudo su - root <<EOF
     if systemctl is-active --quiet nginx; then
