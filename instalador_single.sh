@@ -75,6 +75,8 @@ salvar_variaveis() {
     echo "subdominio_oficial=${subdominio_oficial}" >>$ARQUIVO_VARIAVEIS
   fi
   echo "instalar_transcricao=${instalar_transcricao}" >>$ARQUIVO_VARIAVEIS
+  echo "instalar_wacalls_chat=${instalar_wacalls_chat}" >>$ARQUIVO_VARIAVEIS
+  echo "wacalls_port=${wacalls_port:-8081}" >>$ARQUIVO_VARIAVEIS
   storage_type="${storage_type:-local}"
   echo "storage_type=${storage_type}" >>$ARQUIVO_VARIAVEIS
   if [ "${storage_type}" == "r2" ]; then
@@ -227,6 +229,7 @@ menu() {
     printf "   [${BLUE}3${WHITE}] Instalar Transcrição de Audio Nativa\n"
     printf "   [${BLUE}4${WHITE}] Instalar API Oficial\n"
     printf "   [${BLUE}5${WHITE}] Atualizar API Oficial\n"
+    printf "   [${BLUE}6${WHITE}] Instalar WaCalls Chat (WhatsApp Plus)\n"
     printf "   [${BLUE}0${WHITE}] Sair\n"
     echo
     read -p "> " option
@@ -247,10 +250,7 @@ menu() {
       atualizar_api_oficial
       ;;
     6)
-      migrar
-      ;;
-    10)
-      menu
+      instalar_wacalls_chat_menu
       ;;
     0)
       sair
@@ -397,8 +397,12 @@ instalacao_base() {
     salvar_etapa 28
   fi
   if [ "$etapa" -le "28" ]; then
-    fim_instalacao_base || trata_erro "fim_instalacao_base"
+    instalar_wacalls_chat_integrada || trata_erro "instalar_wacalls_chat_integrada"
     salvar_etapa 29
+  fi
+  if [ "$etapa" -le "29" ]; then
+    fim_instalacao_base || trata_erro "fim_instalacao_base"
+    salvar_etapa 30
   fi
 }
 
@@ -685,6 +689,25 @@ questoes_variaveis_base() {
     sleep 2
   fi
 
+  # PERGUNTA SOBRE WACALLS-CHAT (WhatsApp Plus)
+  banner
+  printf "${WHITE} >> Deseja instalar o WaCalls Chat (WhatsApp Plus / whatsmeow)? (S/N): \n"
+  echo
+  read -p "> " instalar_wacalls_chat
+  instalar_wacalls_chat=$(echo "${instalar_wacalls_chat}" | tr '[:upper:]' '[:lower:]')
+  echo
+
+  if [ "${instalar_wacalls_chat}" == "s" ]; then
+    wacalls_port="${wacalls_port:-8081}"
+    printf "${GREEN} >> WaCalls Chat será instalado (porta ${wacalls_port}, systemd).${WHITE}\n"
+    sleep 2
+  else
+    instalar_wacalls_chat="n"
+    wacalls_port="${wacalls_port:-8081}"
+    printf "${YELLOW} >> WaCalls Chat não será instalado.${WHITE}\n"
+    sleep 2
+  fi
+
   perguntar_storage_midias
 }
 
@@ -799,6 +822,11 @@ dados_instalacao_base() {
     printf "   ${WHITE}API Transcrição: ------->> ${YELLOW}Sim (porta 4002)\n"
   else
     printf "   ${WHITE}API Transcrição: ------->> ${YELLOW}Não\n"
+  fi
+  if [ "${instalar_wacalls_chat}" == "s" ]; then
+    printf "   ${WHITE}WaCalls Chat: ---------->> ${YELLOW}Sim (porta ${wacalls_port:-8081}, systemd)\n"
+  else
+    printf "   ${WHITE}WaCalls Chat: ---------->> ${YELLOW}Não\n"
   fi
   if [ "${storage_type}" == "r2" ]; then
     printf "   ${WHITE}Storage de Mídias: ----->> ${YELLOW}Cloudflare R2 (${cf_r2_bucket})\n"
@@ -1735,6 +1763,16 @@ instala_backend_base() {
   cf_r2_secret_access_key="${cf_r2_secret_access_key:-}"
   cf_r2_bucket="${cf_r2_bucket:-}"
   cf_r2_public_url="${cf_r2_public_url:-}"
+  wacalls_port="${wacalls_port:-8081}"
+  if [ "${instalar_wacalls_chat}" == "s" ]; then
+    wacalls_chat_url_env="http://127.0.0.1:${wacalls_port}"
+    wacalls_chat_email_env="wacalls@admin.com"
+    wacalls_chat_password_env="admin"
+  else
+    wacalls_chat_url_env=""
+    wacalls_chat_email_env=""
+    wacalls_chat_password_env=""
+  fi
   
   {
     sleep 2
@@ -1842,6 +1880,11 @@ OFFICIAL_CAMPAIGN_CONCURRENCY=10  # Processa até 10 campanhas ao mesmo tempo
 
 # API de Transcrição de Audio
 TRANSCRIBE_URL=http://127.0.0.1:4002
+
+# WaCalls Chat (WhatsApp Plus / whatsmeow)
+WACALLS_CHAT_URL=${wacalls_chat_url_env}
+WACALLS_CHAT_EMAIL=${wacalls_chat_email_env}
+WACALLS_CHAT_PASSWORD=${wacalls_chat_password_env}
 
 # Storage de mídias (local ou r2)
 STORAGE_TYPE=${storage_type}
@@ -2793,6 +2836,10 @@ fim_instalacao_base() {
   if [ "${instalar_transcricao}" == "s" ]; then
     printf "   ${WHITE}API Transcrição: ${BLUE}http://127.0.0.1:4002 ${WHITE}(PM2: ${empresa}-api_transcricao)\n"
   fi
+  if [ "${instalar_wacalls_chat}" == "s" ]; then
+    printf "   ${WHITE}WaCalls Chat: ${BLUE}http://127.0.0.1:${wacalls_port:-8081} ${WHITE}(systemd: ${empresa}-wacalls-chat)\n"
+    printf "   ${WHITE}WaCalls admin: ${BLUE}wacalls@admin.com / admin${WHITE}\n"
+  fi
   if [ "${storage_type}" == "r2" ]; then
     printf "   ${WHITE}Storage mídias: ${BLUE}Cloudflare R2 ${WHITE}(bucket: ${cf_r2_bucket})\n"
   else
@@ -3156,6 +3203,52 @@ instalar_transcricao_integrada() {
   fi
   chmod +x "$script_path"
   bash "$script_path"
+}
+
+# Instalar WaCalls Chat (fluxo principal)
+instalar_wacalls_chat_integrada() {
+  if [ "${instalar_wacalls_chat}" != "s" ]; then
+    printf "${YELLOW} >> Pulando WaCalls Chat (não selecionado)...${WHITE}\n"
+    return 0
+  fi
+  local setup_dir
+  setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local script_path="${setup_dir}/instalador_wacalls_chat.sh"
+  if [ ! -f "$script_path" ]; then
+    printf "${RED} >> instalador_wacalls_chat.sh não encontrado em: ${setup_dir}${WHITE}\n"
+    return 1
+  fi
+  if [ ! -d "/home/deploy/${empresa}/wacalls-chat" ]; then
+    printf "${RED} >> Pasta wacalls-chat ausente no clone. Atualize o repositório CRM.${WHITE}\n"
+    return 1
+  fi
+  chmod +x "$script_path"
+  EMPRESA="${empresa}" bash "$script_path"
+}
+
+# Menu: instalar WaCalls Chat em VPS já existente
+instalar_wacalls_chat_menu() {
+  banner
+  printf "${WHITE} >> Instalando WaCalls Chat (WhatsApp Plus)...\n"
+  echo
+  carregar_variaveis
+  instalar_wacalls_chat="s"
+  wacalls_port="${wacalls_port:-8081}"
+  if [ -f "$ARQUIVO_VARIAVEIS" ]; then
+    if grep -qE '^instalar_wacalls_chat=' "$ARQUIVO_VARIAVEIS"; then
+      sed -i 's|^instalar_wacalls_chat=.*|instalar_wacalls_chat=s|' "$ARQUIVO_VARIAVEIS"
+    else
+      echo "instalar_wacalls_chat=s" >> "$ARQUIVO_VARIAVEIS"
+    fi
+    if grep -qE '^wacalls_port=' "$ARQUIVO_VARIAVEIS"; then
+      sed -i "s|^wacalls_port=.*|wacalls_port=${wacalls_port}|" "$ARQUIVO_VARIAVEIS"
+    else
+      echo "wacalls_port=${wacalls_port}" >> "$ARQUIVO_VARIAVEIS"
+    fi
+  fi
+  instalar_wacalls_chat_integrada
+  printf "${GREEN} >> Processo de instalação do WaCalls Chat finalizado. Voltando ao menu...${WHITE}\n"
+  sleep 2
 }
 
 # Adicionar função para instalar transcrição de áudio nativa (menu)
