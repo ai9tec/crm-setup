@@ -3105,8 +3105,14 @@ SERVERJS
   pm2 reset all
   pm2 restart all
   pm2 save
-  pm2 startup
 UPDATEAPP
+
+  # Mesmo critério dos atualizadores: startup como root, não como deploy.
+  if [ -d /usr/local/n/versions/node/20.19.4/bin ]; then
+    export PATH=/usr/local/n/versions/node/20.19.4/bin:/usr/bin:/usr/local/bin:$PATH
+  fi
+  pm2 startup systemd -u deploy --hp /home/deploy || \
+    printf "${YELLOW} >> Aviso: não foi possível configurar o startup do PM2. A atualização segue.\n${WHITE}"
 
   sudo su - root <<EOF
     if systemctl is-active --quiet nginx; then
