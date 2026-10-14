@@ -34,6 +34,23 @@ trata_erro() {
   exit 1
 }
 
+# O unit do systemd só pode ser gravado como root. Na stable o SSH é ubuntu
+# (sudo) e o usuário deploy não tem sudo; nas demais o SSH já é root. Este
+# script exige root nos dois casos, então o startup fica fora de `su - deploy`.
+configura_pm2_startup() {
+  printf "${WHITE} >> Configurando inicialização do PM2 para o usuário deploy...\n"
+  if [ -d /usr/local/n/versions/node/20.19.4/bin ]; then
+    export PATH=/usr/local/n/versions/node/20.19.4/bin:/usr/bin:/usr/local/bin:$PATH
+  else
+    export PATH=/usr/bin:/usr/local/bin:$PATH
+  fi
+  if pm2 startup systemd -u deploy --hp /home/deploy; then
+    printf "${GREEN} >> PM2 configurado para iniciar com o sistema.\n${WHITE}"
+  else
+    printf "${YELLOW} >> Aviso: não foi possível configurar o startup do PM2. O deploy segue.\n${WHITE}"
+  fi
+}
+
 # Carregar variáveis
 dummy_carregar_variaveis() {
   if [ -f $ARQUIVO_VARIAVEIS ]; then
@@ -160,13 +177,14 @@ pm2 flush
 pm2 reset all
 pm2 start all
 pm2 save
-pm2 startup
 EOF
   app_rc=$?
   if [ "${app_rc}" -ne 0 ]; then
     printf "${RED} >> Falha no build do backend ou do frontend (código ${app_rc}). Deploy interrompido.${WHITE}\n"
     exit "${app_rc}"
   fi
+
+  configura_pm2_startup
 
   sudo su - root <<EOF
     if systemctl is-active --quiet nginx; then
