@@ -51,6 +51,37 @@ configura_pm2_startup() {
   fi
 }
 
+# O PM2 marca online mesmo quando o Nest falha no listen e não abre a porta
+# (foi o 502 de 2026-10-21: Postgres desligando no boot, processo vivo sem :6000).
+verificar_api_oficial_no_ar() {
+  if [ "${instalar_api_oficial}" != "s" ] || [ ! -d "/home/deploy/${empresa}/api_oficial" ]; then
+    return 0
+  fi
+
+  local env_file="/home/deploy/${empresa}/api_oficial/.env"
+  local port codigo tentativa
+  port=$(grep -E '^PORT=' "${env_file}" 2>/dev/null | head -1 | cut -d '=' -f2- | tr -d '\r" ')
+  port=${port:-6000}
+
+  printf "${WHITE} >> Aguardando a API Oficial responder em 127.0.0.1:${port}...\n"
+  for ((tentativa=1; tentativa<=15; tentativa++)); do
+    codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:${port}/" || true)
+    if [ -n "${codigo}" ] && [ "${codigo}" != "000" ]; then
+      printf "${GREEN} >> API Oficial no ar (HTTP ${codigo} na porta ${port}).\n${WHITE}"
+      return 0
+    fi
+    sleep 3
+  done
+
+  printf "${RED} >> ERRO: API Oficial não abriu a porta ${port} após o restart do PM2.${WHITE}\n"
+  printf "${RED} >> O processo pode constar online sem escutar. Deploy marcado como falha.${WHITE}\n"
+  echo
+  sudo -u deploy pm2 describe api_oficial || true
+  echo
+  sudo -u deploy pm2 logs api_oficial --lines 50 --nostream || true
+  return 1
+}
+
 # Carregar variáveis
 dummy_carregar_variaveis() {
   if [ -f $ARQUIVO_VARIAVEIS ]; then
@@ -458,6 +489,8 @@ API_OFICIAL
       printf "${GREEN}Nenhum serviço de proxy (Nginx ou Traefik) está em execução.${WHITE}"
     fi
 EOF
+
+  verificar_api_oficial_no_ar || exit 1
 
   echo
   printf "${WHITE} >> Atualização do ${nome_titulo} concluída...\n"
