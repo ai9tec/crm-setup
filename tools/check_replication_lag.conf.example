@@ -1,0 +1,26 @@
+# Copie para /etc/crm-replication-monitor.conf
+# chmod 600
+#
+# ROLE=publisher  em cada VPS de produção (app, magistral, beauty)
+# ROLE=subscriber na Oracle, onde as assinaturas aplicam
+
+ROLE=publisher
+
+# Destino do alerta. Vazio = só syslog e o log do cron.
+# n8n: URL de produção do nó Webhook (POST). Não use a URL de teste.
+# ntfy: https://ntfy.sh/um-topico-longo-e-secreto
+# slack: https://hooks.slack.com/services/...
+ALERT_URL=
+ALERT_FORMAT=n8n
+
+# Reenvia o mesmo alerta no máximo a cada 1 hora enquanto o problema durar.
+REALERT_SECONDS=3600
+
+# Publisher: WAL retido pelo slot. Não remove o slot.
+WAL_WARN_BYTES=1073741824
+WAL_CRIT_BYTES=5368709120
+DISK_WARN_PERCENT=75
+DISK_CRIT_PERCENT=85
+
+# Subscriber: último recebimento mais velho que isto.
+SUB_LAG_SECONDS=180
