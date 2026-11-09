@@ -24,3 +24,10 @@ DISK_CRIT_PERCENT=85
 
 # Subscriber: último recebimento mais velho que isto.
 SUB_LAG_SECONDS=180
+
+# Heartbeat do Hetrix (Cron Job). Só é chamado quando a checagem passa.
+# Se a replicação parar, ou se o cron deixar de rodar, o Hetrix marca DOWN.
+# Crie em Uptime Monitors → Add Monitor → Heartbeat → Cron Job.
+# Timeout sugerido: 10 minutos, com o cron a cada 2 minutos.
+# Use na contenção (ROLE=subscriber). Deixe vazio nos publishers.
+HEARTBEAT_URL=

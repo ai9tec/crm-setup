@@ -21,6 +21,7 @@ source "${CONF}"
 : "${DISK_WARN_PERCENT:=75}"
 : "${DISK_CRIT_PERCENT:=85}"
 : "${SUB_LAG_SECONDS:=180}"
+: "${HEARTBEAT_URL:=}"
 
 if [[ "${ROLE}" != "publisher" && "${ROLE}" != "subscriber" ]]; then
   echo "ERRO: ROLE deve ser publisher ou subscriber"
@@ -98,6 +99,11 @@ check_publisher() {
   while IFS= read -r line; do
     [[ -z "${line}" ]] && continue
     IFS='|' read -r name active retained <<<"${line}"
+    # Slots pg_*_sync_* são temporários da cópia inicial. Inativos e pequenos
+    # não significam que a assinatura parou.
+    if [[ "${name}" == pg_*_sync_* && "${active}" != "1" && "${retained}" -lt "${WAL_WARN_BYTES}" ]]; then
+      continue
+    fi
     if [[ "${active}" != "1" ]]; then
       add_problem "critico" "Slot ${name} inativo. WAL retido: $(human_bytes "${retained}"). A assinatura parou de consumir. O slot foi mantido."
     elif (( retained >= WAL_CRIT_BYTES )); then
@@ -110,31 +116,38 @@ check_publisher() {
 }
 
 check_subscriber() {
-  local databases db subs line name has_pid lag
-  if ! databases="$(psql_at postgres \
-    "SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY 1;")"; then
-    add_problem "critico" "Falha ao listar bancos na Oracle."
+  local rows line db name enabled has_pid lag
+  # pg_subscription é do cluster. O banco de destino é subdbid, não o banco
+  # em que a consulta roda.
+  if ! rows="$(psql_at postgres \
+    "SELECT d.datname || '|' || s.subname || '|' || CASE WHEN s.subenabled THEN '1' ELSE '0' END || '|' || CASE WHEN st.pid IS NOT NULL THEN '1' ELSE '0' END || '|' || COALESCE(EXTRACT(EPOCH FROM (clock_timestamp() - st.last_msg_receipt_time))::bigint, -1) FROM pg_subscription s JOIN pg_database d ON d.oid = s.subdbid LEFT JOIN pg_stat_subscription st ON st.subid = s.oid ORDER BY 1;")"; then
+    add_problem "critico" "Falha ao consultar as assinaturas."
     return
   fi
-  while IFS= read -r db; do
-    [[ -z "${db}" ]] && continue
-    if ! subs="$(psql_at "${db}" \
-      "SELECT subname || '|' || CASE WHEN pid IS NULL THEN '0' ELSE '1' END || '|' || COALESCE(EXTRACT(EPOCH FROM (clock_timestamp() - last_msg_receipt_time))::bigint, -1) FROM pg_stat_subscription ORDER BY 1;" 2>/dev/null)"; then
-      continue
+  if [[ -z "${rows}" ]]; then
+    add_problem "critico" "Nenhuma assinatura de replicação encontrada."
+    return
+  fi
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    IFS='|' read -r db name enabled has_pid lag <<<"${line}"
+    if [[ "${enabled}" != "1" ]]; then
+      add_problem "critico" "Assinatura ${name} (${db}) está desligada."
+    elif [[ "${lag}" -lt 0 ]]; then
+      add_problem "critico" "Assinatura ${name} (${db}) ainda não recebeu dados."
+    elif [[ "${has_pid}" != "1" ]]; then
+      add_problem "critico" "Assinatura ${name} (${db}) sem worker. Último recebimento há ${lag}s."
+    elif (( lag > SUB_LAG_SECONDS )); then
+      add_problem "critico" "Assinatura ${name} (${db}) sem avançar há ${lag}s (limite ${SUB_LAG_SECONDS}s)."
     fi
-    [[ -z "${subs}" ]] && continue
-    while IFS= read -r line; do
-      [[ -z "${line}" ]] && continue
-      IFS='|' read -r name has_pid lag <<<"${line}"
-      if [[ "${lag}" -lt 0 ]]; then
-        add_problem "critico" "Assinatura ${name} no banco ${db} ainda não recebeu dados."
-      elif [[ "${has_pid}" != "1" ]]; then
-        add_problem "critico" "Assinatura ${name} no banco ${db} sem worker. Último recebimento há ${lag}s."
-      elif (( lag > SUB_LAG_SECONDS )); then
-        add_problem "critico" "Assinatura ${name} no banco ${db} sem avançar há ${lag}s (limite ${SUB_LAG_SECONDS}s)."
-      fi
-    done <<<"${subs}"
-  done <<<"${databases}"
+  done <<<"${rows}"
+}
+
+send_heartbeat() {
+  [[ -z "${HEARTBEAT_URL}" ]] && return 0
+  if ! curl -fsS -m 20 -o /dev/null "${HEARTBEAT_URL}"; then
+    logger -t crm-replication -p user.warning "Falha ao pingar o heartbeat em ${HOST_NAME}"
+  fi
 }
 
 send_alert() {
@@ -189,6 +202,7 @@ if (( ${#problems[@]} == 0 )); then
     send_alert "[ok] replicação ${HOST_NAME}" "A replicação lógica voltou ao normal em ${HOST_NAME} (${ROLE})."
     rm -f "${STATE_FILE}"
   fi
+  send_heartbeat
   echo "OK ${HOST_NAME} ${ROLE} $(date -Iseconds)"
   exit 0
 fi
